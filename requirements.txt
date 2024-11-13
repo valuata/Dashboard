@@ -29,7 +29,7 @@ matplotlib-inline==0.1.7
 mdurl==0.1.2
 narwhals==1.11.1
 nest-asyncio==1.6.0
-numpy==1.24.0
+numpy==2.1.1
 openpyxl==3.1.5
 packaging==24.1
 pandas==2.2.2
@@ -46,6 +46,7 @@ pydeck==0.9.1
 Pygments==2.18.0
 python-dateutil==2.9.0.post0
 pytz==2024.2
+pywin32==308
 pyzmq==26.2.0
 referencing==0.35.1
 requests==2.32.3
