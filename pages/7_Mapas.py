@@ -3,7 +3,14 @@ import os
 from PIL import Image
 
 st.set_page_config(page_title="Mapas", layout="wide")
-
+st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
+st.markdown("""
+    <style>
+        * {
+            font-family: 'Overpass', sans-serif !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 def get_year_options():
     years = set()
@@ -13,7 +20,6 @@ def get_year_options():
             years.add(year)
     return sorted(years)
 
-# Function to fetch unique months from filenames
 def get_month_options():
     months = set()
     for filename in os.listdir(IMAGE_DIR):
@@ -33,9 +39,50 @@ def fetch_images(year, month, tipo, forecast_year, forecast_month):
             images.append(filename)
     return images
 
-# Function to extract dates from the filename
+def get_data_options():
+    data = set()
+    for filename in os.listdir(IMAGE_DIR):
+        if filename.endswith('.png'):
+            year_month = filename.split('_')[0]  # YYYYMM
+            formatted_date = f"{year_month[4:6]}/{year_month[:4]}"  # MM/AAAA
+            data.add(formatted_date)
+    return sorted(data)
+
+def get_forecast_data_options():
+    forecast_data = set()
+    for filename in os.listdir(IMAGE_DIR):
+        if filename.endswith('.png'):
+            forecast_month = filename.split('_')[-1].split('.')[0]  # yyyymm
+            formatted_forecast = f"{forecast_month[4:6]}/{forecast_month[:4]}"  # MM/AAAA
+            forecast_data.add(formatted_forecast)
+    return sorted(forecast_data)
+
+# Função para filtrar as imagens com base nos filtros aplicados
+def fetch_images_by_data(data, tipo, forecast_data):
+    images = []
+    for filename in os.listdir(IMAGE_DIR):
+        if filename.endswith('.png'):
+            year_month = filename.split('_')[0]  # YYYYMM
+            formatted_date = f"{year_month[4:6]}/{year_month[:4]}"  # MM/AAAA
+            forecast_year_month = filename.split('_')[-1].split('.')[0]  # YYYYMM for forecast
+            forecast_formatted = f"{forecast_year_month[4:6]}/{forecast_year_month[:4]}"  # MM/AAAA
+
+            # Verifica se o tipo é "SOLO"
+            if tipo == "SOLO":
+                if data == "" or formatted_date == data:
+                    # Adiciona somente imagens do tipo "SOLO"
+                    if "SOLO" in filename:
+                        images.append(filename)
+            # Para os tipos "ANOMALIA" e "PRECIPITACAO"
+            elif tipo in ["ANOMALIA", "PRECIPITACAO"]:
+                if (data == "" or formatted_date == data) and \
+                   (forecast_data == "" or forecast_formatted == forecast_data):
+                    # Adiciona somente imagens do tipo correspondente
+                    if tipo in filename:
+                        images.append(filename)
+    return images
+
 def extract_dates_from_filename(filename):
-    # Extract the regular date (YYYYMM) and the prediction date (yyyymm)
     parts = filename.split('_')
     regular_date = parts[0]  # YYYYMM format
     prediction_date = parts[-1].split('.')[0]  # yyyymm format
@@ -48,142 +95,178 @@ def extract_dates_from_filename(filename):
 
     return regular_month, regular_year, pred_month, pred_year
 
-# Function to get the image name based on the TIPO
 def get_image_name(tipo, regular_month, regular_year, pred_month=None, pred_year=None, forecast_month=None, forecast_year=None):
     if tipo == "SOLO":
-        # For SOLO type, no second date is included
-        name = "armazenamento de agua no solo (%)"
+        name = "Armazenamento de agua no solo (%)"
         return f"{regular_year}/{regular_month} - {name}"
 
     elif tipo == "ANOMALIA":
-        name = "anomalia - precipitação acumulada (mm)"
+        name = "Anomalia - Precipitação acumulada (mm)"
     elif tipo == "PRECIPITACAO":
-        name = "previsão - precipitação acumulada (mm)"
+        name = "Previsão - Precipitação acumulada (mm)"
     else:
-        name = tipo  # In case there's a new type we don't know about
+        name = tipo
 
-    # If "Previsão", format like: YYYY/MM - name: description - yyyy/mm (forecast)
     if forecast_month and forecast_year:
         return f"{regular_year}/{regular_month} - {name} - {forecast_year}/{forecast_month}"
     else:
-        # If forecast details are not provided, just show the regular and prediction dates
         return f"{regular_year}/{regular_month} - {name} - {pred_year}/{pred_month}"
-
-
-# Function to fetch prediction years based on available filenames
-def get_prediction_year_options():
-    prediction_years = set()
-    for filename in os.listdir(IMAGE_DIR):
-        if filename.endswith('.png'):
-            parts = filename.split('_')
-            if len(parts) >= 3:
-                prediction_year = parts[-1]  # Get the last part (YYYYMM)
-                prediction_years.add(prediction_year)
-    return sorted(prediction_years)
-
 
 IMAGE_DIR = "Imagens Meteorologia"  # Replace with the actual path
 st.title("Mapas")
-# First Part: User Input for Year and Month (Already Working)
-# Get available year and month options
+
+# Dicionário para mapeamento de tipos
+tipo_mapping = {
+    "SOLO": "Armazenamento de água no solo (%)",
+    "ANOMALIA": "Anomalia - Precipitação acumulada (mm)",
+    "PRECIPITACAO": "Previsão - Precipitação acumulada (mm)"
+}
+
+# Filtros de ano e mês para seleção
 years = get_year_options()
 months = get_month_options()
-# User input for year and month
+
+# Primeira parte: entrada do usuário para ano e mês
 col1, col2 = st.columns(2)
 with col1:
     selected_year = st.selectbox("Ano", options=[""] + years)
 with col2:
     selected_month = st.selectbox("Mês", options=[""] + months)
-# Fetch and display images based on year and month selection
+
+# Exibir imagens com base na seleção de ano e mês
 selected_images = fetch_images(selected_year, selected_month, "", "", "")
 if selected_images:
-    cols = st.columns(3)  # Create 3 columns
+    # Calcular o número de colunas com base no número de imagens
+    num_columns = max(1, min(5, len(selected_images)))  # Máximo de 5 imagens por linha
+    cols = st.columns(num_columns)
+    
     for i, img_file in enumerate(selected_images):
         img_path = os.path.join(IMAGE_DIR, img_file)
         img = Image.open(img_path)
-        # Extract TIPO and other information from the filename
         filename_without_ext = os.path.splitext(img_file)[0]
-        tipo = filename_without_ext.split('_')[1]  # Extract type
-        # Extract regular and prediction dates using the new function
+        tipo = filename_without_ext.split('_')[1]
         regular_month, regular_year, pred_month, pred_year = extract_dates_from_filename(img_file)
-        # Get the formatted image name
         formatted_name = get_image_name(tipo, regular_month, regular_year, pred_month, pred_year)
-        # Resize image (optional)
-        img.thumbnail((200, 200))
-        with cols[i % 3]:  # Use modulo to place images in columns
+        
+        # Ajustar o tamanho da imagem proporcionalmente ao número de colunas, mantendo a qualidade
+        img_width, img_height = img.size
+        max_width = 300  # Largura máxima
+        max_height = 300  # Altura máxima
+
+        if img_width > img_height:
+            img.thumbnail((max_width, int((max_width / img_width) * img_height)))
+        else:
+            img.thumbnail((int((max_height / img_height) * img_width), max_height))
+        
+        with cols[i % num_columns]:
             st.image(img, caption=formatted_name)
 else:
     st.write("Não há imagens para a combinação de datas selecionada.")
-# Second Part: Comparison Section (up to 4 filters)
+
+# Segunda parte: seção de comparação
 st.write("---")
 col3, col4, col5 = st.columns(3)
 with col3:
     st.header("Comparação")
-# Initialize the list of selected filters in session state
+
+# Inicializar os filtros de comparação
 if 'selected_filters' not in st.session_state:
-    st.session_state.selected_filters = [{"year": "", "month": "", "tipo": "", "forecast_year": "", "forecast_month": ""}]
-# --- Filter Management: Independent of buttons ---
-# Button to add a filter
+    st.session_state.selected_filters = [{"data": "", "tipo": "", "forecast_data": ""}]
+
+# Botões para adicionar ou remover filtros
 with col4:
+    st.write('')  # Deixar espaço para o botão de adicionar
+    st.write('')
     add_button_clicked = st.button("➕")
     if add_button_clicked and len(st.session_state.selected_filters) < 4:
-        st.session_state.selected_filters.append({"year": "", "month": "", "tipo": "", "forecast_year": "", "forecast_month": ""})
+        st.session_state.selected_filters.append({"data": "", "tipo": "", "forecast_data": ""})
+
 with col5:
-    # Button to remove the last filter
+    st.write('')  # Deixar espaço para o botão de remover
+    st.write('')    
     remove_button_clicked = st.button("➖")
     if remove_button_clicked and len(st.session_state.selected_filters) > 1:
         st.session_state.selected_filters.pop()
-# Dynamically create filters for comparison (up to 4)
+
+# Obter as opções de "Data" e "Data Previsão"
+data_options = get_data_options()
+forecast_data_options = get_forecast_data_options()
+
+# Criar dinamicamente os filtros de comparação
 filter_columns = st.columns(len(st.session_state.selected_filters))
-# Loop through the filters and create a set of filters for each image
 for i, filter_set in enumerate(st.session_state.selected_filters):
     with filter_columns[i]:
         st.subheader(f"Imagem {i + 1}")
-        year = st.selectbox(f"Ano", options=[""] + years, key=f"year_{i}")
-        month = st.selectbox(f"Mês", options=[""] + months, key=f"month_{i}")
-        tipo = st.selectbox(f"Tipo", options=["", "SOLO", "ANOMALIA", "PRECIPITACAO"], key=f"tipo_{i}")
-        # Separate Forecast Year and Month, ensure it's the lowercase format for previsao
-        forecast_year = st.selectbox(f"Ano Previsão", options=[""] + years, key=f"forecast_year_{i}")
-        forecast_month = st.selectbox(f"Mês Previsão ", options=[""] + months, key=f"forecast_month_{i}")
-        # Update the filters in the session state
+        
+        # Filtro de Data (MM/AAAA)
+        data = st.selectbox(f"Data", options=[""] + data_options, key=f"data_{i}")
+        
+        # Tipo (SOLO, ANOMALIA, PRECIPITACAO)
+        tipo = st.selectbox(f"Tipo", options=["", "SOLO", "ANOMALIA", "PRECIPITACAO"], key=f"tipo_{i}", format_func=lambda x: tipo_mapping.get(x, x))
+        
+        # Filtro de Data Previsão (somente se tipo não for SOLO)
+        if tipo == "SOLO":
+            forecast_data = ""
+            st.selectbox(f"Data (Previsão)", options=[""] + forecast_data_options, disabled=True, key=f"forecast_data_{i}")
+        else:
+            forecast_data = st.selectbox(f"Data (Previsão)", options=[""] + forecast_data_options, key=f"forecast_data_{i}")
+
+        # Atualizar os filtros na sessão
         st.session_state.selected_filters[i] = {
-            "year": year, 
-            "month": month, 
+            "data": data, 
             "tipo": tipo, 
-            "forecast_year": forecast_year, 
-            "forecast_month": forecast_month
+            "forecast_data": forecast_data
         }
-# Button to trigger image fetch and display
+
+# Botão para gerar a comparação
 if st.button("🔍 Gerar Comparação"):
-    # Check if all filters are selected for each image
+    # Verificar se todos os filtros estão selecionados para cada imagem
+    images_per_row = 3  # Número de imagens por linha
+    all_images = []
+
     for i, filter_set in enumerate(st.session_state.selected_filters):
-        year = filter_set["year"]
-        month = filter_set["month"]
+        data = filter_set["data"]
         tipo = filter_set["tipo"]
-        forecast_year = filter_set["forecast_year"]
-        forecast_month = filter_set["forecast_month"]
-        # If any filter is missing, skip this image
-        if not all([year, month, tipo, forecast_year, forecast_month]):
+        forecast_data = filter_set["forecast_data"]
+        
+        # Se o tipo for "SOLO", a previsão é ignorada
+        if tipo == "SOLO":
+            forecast_data = ""  # Ignora a previsão
+
+        # Se algum filtro estiver faltando (exceto previsão para SOLO), pular a imagem
+        if not all([data, tipo]) or (tipo != "SOLO" and not forecast_data):
             st.warning(f"Por favor, complete todos os filtros para a Imagem {i + 1}.")
-            continue  # Skip this image if not all filters are selected
-        selected_images = fetch_images(year, month, tipo, forecast_year, forecast_month)
+            continue
+        
+        selected_images = fetch_images_by_data(data, tipo, forecast_data)
         if selected_images:
-            st.subheader(f"Imagem {i + 1}")
-            cols = st.columns(3)  # Display in 3 columns
-            for j, img_file in enumerate(selected_images):
-                img_path = os.path.join(IMAGE_DIR, img_file)
-                img = Image.open(img_path)
-                # Remove the file extension (.png) before splitting
-                filename_without_ext = os.path.splitext(img_file)[0]
-                # Extract TIPO from the filename (the second part of the filename, e.g., PRECIPITACAO)
-                tipo_from_filename = filename_without_ext.split('_')[1]  # Get the type from the second part of the filename
-                # Extract regular and prediction date (using new function)
-                regular_month, regular_year, pred_month, pred_year = extract_dates_from_filename(img_file)
-                # Get the formatted image name
-                formatted_name = get_image_name(tipo_from_filename, regular_month, regular_year, pred_month, pred_year, forecast_month, forecast_year)
-                # Resize image (optional)
-                img.thumbnail((200, 200))
-                with cols[j % 3]:  # Use modulo to place images in columns
-                    st.image(img, caption=formatted_name)
+            # Adiciona as imagens selecionadas para essa combinação de filtros
+            all_images.extend(selected_images)
         else:
             st.write(f"Sem resultados para a Imagem {i + 1} com os filtros selecionados.")
+    
+    if all_images:
+        # Organizar as imagens lado a lado em várias linhas
+        cols = st.columns(images_per_row)  # Cria colunas para até 3 imagens por linha
+        for idx, img_file in enumerate(all_images):
+            img_path = os.path.join(IMAGE_DIR, img_file)
+            img = Image.open(img_path)
+            filename_without_ext = os.path.splitext(img_file)[0]
+            tipo_from_filename = filename_without_ext.split('_')[1]
+            regular_month, regular_year, pred_month, pred_year = extract_dates_from_filename(img_file)
+            formatted_name = get_image_name(tipo_from_filename, regular_month, regular_year, pred_month, pred_year)
+
+            # Ajustar o tamanho da imagem
+            img_width, img_height = img.size
+            max_width = 300
+            max_height = 300
+
+            if img_width > img_height:
+                img.thumbnail((max_width, int((max_width / img_width) * img_height)))
+            else:
+                img.thumbnail((int((max_height / img_height) * img_width), max_height))
+
+            # Exibir a imagem na coluna correta
+            cols[idx % images_per_row].image(img, caption=formatted_name)
+    else:
+        st.write("Sem imagens para exibir com os filtros selecionados.")
