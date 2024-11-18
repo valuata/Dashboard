@@ -4,6 +4,15 @@ import plotly.graph_objs as go
 from datetime import datetime
 
 st.set_page_config(page_title="ENA", layout="wide")
+st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
+st.markdown("""
+    <style>
+        * {
+            font-family: 'Overpass', sans-serif !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 
 
 def aggregate_data_ena(data, frequency, metric_column):
@@ -87,7 +96,7 @@ with col2:
 filtered_data = ena_data[(ena_data['ena_data'] >= pd.to_datetime(start_date)) & 
                          (ena_data['ena_data'] <= pd.to_datetime(end_date))]
 # Multiple selection for subsystems with custom order
-ordered_subsystems = ['SE', 'S', 'NE', 'N']  # Define the custom order for subsystems
+ordered_subsystems = ['SE/CO', 'S', 'NE', 'N']  # Define the custom order for subsystems
 selected_subsystems = st.multiselect(
     "Submercados", 
     ordered_subsystems,
