@@ -1,6 +1,5 @@
 [theme]
 primaryColor="#67aeaa"
 backgroundColor="#E8E8E8"
-secondaryBackgroundColor="#d4d4dc"
+secondaryBackgroundColor="#E8E8E8"
 textColor="#656871"
-font="overpass light"
