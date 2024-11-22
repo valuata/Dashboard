@@ -41,7 +41,7 @@ max_date = pld_data.index.get_level_values('Data').max().date()
 
 # Set default date range as last 5 years
 end_date_default = max_date
-start_date_default = end_date_default - timedelta(days=5*365)
+start_date_default = max_date.replace(year=max_date.year - 5, month=1, day=1)
 
 # Date Range Slider
 start_date_slider, end_date_slider = st.slider(
@@ -49,15 +49,15 @@ start_date_slider, end_date_slider = st.slider(
     min_value=min_date,
     max_value=max_date,
     value=(start_date_default, end_date_default),
-    format="YYYY-MM-DD"
+    format="DD/MM/YYYY"
 )
 
 # Display date inputs side by side using st.columns()
 col1, col2 = st.columns(2)
 with col1:
-    start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD-MM-YYYY")
+    start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
 with col2:
-    end_date_input = st.date_input("Fim", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD-MM-YYYY")
+    end_date_input = st.date_input("Fim", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
 
 # Apply the selected date range
 start_date = pd.to_datetime(start_date_input)
@@ -126,11 +126,8 @@ elif period == 'Mensal':
 # Update layout for the average value line graph
 avg_values_per_submarket_graph.update_layout(
     title=f'Preço médio por submercado ({period})',
-    xaxis_title="Data",
     yaxis_title="Preço (R$)",
-    xaxis=dict(
-        tickformat=xaxis_format  # Apply the date format to the x-axis
-    ),
+    xaxis=dict(tickformat="%d/%m/%Y"),
     legend=dict(
         orientation="h",  # Horizontal legend
         yanchor="bottom", 
@@ -194,6 +191,13 @@ filtered_data_submarket = filtered_data[filtered_data.index.get_level_values('Su
 # Get the aggregated data based on the selected frequency
 agg_data = aggregate_data_for_candlestick(filtered_data_submarket, frequency=period)
 
+increasing_color = '#68aeaa'  # Cor para candles de alta (verde)
+decreasing_color = '#e28876'  # Cor para candles de baixa (vermelho)
+
+# Customize the whisker line color
+whisker_line_color = '#323e47'
+
+
 # Check if the data is not empty
 if not agg_data.empty:
     # Create the candlestick chart
@@ -203,10 +207,12 @@ if not agg_data.empty:
         high=agg_data['High'],
         low=agg_data['Low'],
         close=agg_data['Close'],
-        name=f'Candlestick - {selected_submarket}'
+        name=f'Candlestick - {selected_submarket}',
+        increasing=dict(line=dict(color=increasing_color), fillcolor=increasing_color),  # Customize increasing candle
+        decreasing=dict(line=dict(color=decreasing_color), fillcolor=decreasing_color)  # Exibir a legenda
     )])
 
-    # Adicionar a linha whisker com maior alcance horizontal e hover do valor médio
+        # Adicionar a linha whisker com maior alcance horizontal e hover do valor médio
     for i in range(len(agg_data)):
         # Ajustar o próximo ponto de data para estender a linha (exemplo: 1 dia para diário)
         if period == "Diário":
@@ -222,26 +228,21 @@ if not agg_data.empty:
             x=[agg_data['Data'][i] - timedelta(hours=6), next_x - timedelta(hours=6)],  # Deslocar 6 horas para a esquerda (ajuste fino)
             y=[agg_data['Mean'][i], agg_data['Mean'][i]],  # A linha horizontal no valor médio
             mode='lines',
-            line=dict(color="black", width=4, dash="dot"),  # Estilo da linha
+            line=dict(color=whisker_line_color, width=4, dash="dot"),  # Estilo da linha com a nova cor
             hovertemplate=f"Valor médio: {agg_data['Mean'][i]:.2f} R$<extra></extra>",  # Exibir o valor médio no hover
             showlegend=False  # Remover a legenda para esta linha
         ))
-
+    
     # Atualizar o layout do gráfico
     fig.update_layout(
         title=f'Candlestick ({period}) para o submercado {selected_submarket}:',
-        xaxis_title="Data",
         yaxis_title="Preço (R$)",
         xaxis_rangeslider_visible=False,
-        xaxis=dict(
-            tickformat=xaxis_format  # Formato das datas no eixo x
-        ),
-        legend=dict(
-            visible=False  # Remover a legenda do gráfico
-        ),
-        template='plotly_dark'
+        xaxis=dict(tickformat="%d/%m/%Y"),
+        template='plotly_dark',
+        showlegend=False
     )
-
+    
     # Exibir o gráfico candlestick
     st.plotly_chart(fig)
 
