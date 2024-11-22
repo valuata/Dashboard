@@ -15,6 +15,26 @@ st.markdown("""
         * {
             font-family: 'Overpass', sans-serif !important;
         }
+        [data-testid="stMainBlockContainer"] {
+            background-color: #FFFFFF;
+        }
+        [data-testid="stDateInputField"] {
+            background-color: #FFFFFF;
+        }
+        [data-baseweb="input"] {
+            background-color: #FFFFFF;
+        }
+        [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-bh st-ar st-bi st-bj st-bk st-bl"] {
+            background-color: #FFFFFF;
+        }
+        [class="st-ak st-al st-as st-cl st-bg st-cm st-bl"] {
+            background-color: #FFFFFF;
+        }
+        [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
+            background-color: #FFFFFF;
+        }
+        #MainMenu {visibility: hidden;}
+        footer {visivility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
