@@ -105,6 +105,7 @@ def calcular_estatisticas_e_atualizar_porcentagens(df, novo_ano, novos_valores):
         
     df = pd.concat([df, pd.DataFrame([nova_linha])], ignore_index=True)
         # Drop the last row (old mean) if it exists
+    df.iloc[:, 1:13] = df.iloc[:, 1:13].apply(pd.to_numeric, errors='coerce')  # Converts non-numeric values to NaN
     df['(min)MWmed'] = df.iloc[:, 1:13].min(axis=1)
     df['(jnd)MWmed'] = df.iloc[:, 1:13].mean(axis=1)
     df['(max)MWmed'] = df.iloc[:, 1:13].max(axis=1)
