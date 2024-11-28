@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
+import openpyxl
 
 st.set_page_config(page_title="ENA", layout="wide")
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
