@@ -83,6 +83,8 @@ def ler_data_arquivo():
 def atualizar_data_arquivo():
     with open(arquivo_data, 'w') as file:
         file.write(datetime.today().strftime('%d/%m/%Y'))
+    
+    with open(arquivo_data, 'r') as file:
         file_content = file.read()
     push_to_github(repo_name, file_name, commit_message, file_content, token)
 
@@ -255,3 +257,6 @@ if not agg_data.empty:
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.write("Sem informações disponíveis para a filtragem feita.")
+
+
+
