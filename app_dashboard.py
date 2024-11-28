@@ -58,7 +58,6 @@ st.title("Carga")
 
 # Carregar os dados
 carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
-if datetime.now().hour == 10:
     failure = False
     i = 2000
     df_carga = pd.DataFrame()  # Initialize the dataframe
