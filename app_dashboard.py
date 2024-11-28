@@ -305,7 +305,7 @@ while True:
 
         jaRodou = True
 
-
+    ena_data.to_csv("update_ena.csv")
 
     monthly_data = pd.read_csv('Mlt_atualizado.csv')
     monthly_data['Ano'] = monthly_data['Ano'].apply(lambda x: str(x).strip())
