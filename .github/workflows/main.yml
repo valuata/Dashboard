@@ -1,0 +1,21 @@
+name: Usar Token do GitHub
+
+on:
+  push:
+    branches:
+      - main  
+
+jobs:
+  use-token:
+    runs-on: windows-latest  
+
+    steps:
+      - name: Verificar repositório
+        uses: actions/checkout@v3  # Faz o checkout do repositório
+
+      - name: Usar o token para autenticação
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}  
+        run: |
+          echo "Token do GitHub está pronto para uso."
+          # Aqui você pode rodar comandos que utilizam o token, como interagir com a API do GitHub
