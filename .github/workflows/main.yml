@@ -1,24 +1,19 @@
-name: Run Python Script
+name: Example Workflow
 
 on:
   push:
     branches:
-      - main  # Ou qualquer outra branch que você deseja usar
+      - main
 
 jobs:
-  run-python-script:
-    runs-on: windows-latest  # Ambiente onde o código será executado
+  example-job:
+    runs-on: windows-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v3
-        with:
-          python-version: '3.9'
-
-          
-      - name: Run the Python script
-        env:
-          TOKEN: ${{ secrets.TOKEN }}  # Acesse o secret diretamente aqui
+      - name: Use the GitHub token
+        run: |
+          echo "Accessing the token from GitHub secrets"
+          echo "The token is: ${{ secrets.TOKEN }}"
