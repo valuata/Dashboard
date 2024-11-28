@@ -108,7 +108,6 @@ data_atual = datetime.today()
 data_arquivo = ler_data_arquivo()
 
 if (data_atual > data_arquivo and data_atual.hour >= 2):
-    st.write("teste")
     failure = False
     i = 2000
     df_carga = pd.DataFrame()
