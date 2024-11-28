@@ -60,6 +60,7 @@ def authenticate_github(token):
     return g
 
 def push_to_github(repo_name, file_name, commit_message, file_content, token):
+
     g = authenticate_github(token)
     repo = g.get_repo(repo_name)
 
@@ -132,8 +133,8 @@ if data_arquivo is None or (data_atual > data_arquivo and data_atual.hour >= 2):
     
     # Atualizar o arquivo .txt com a data atual
     atualizar_data_arquivo()
-    with open("Carga_Consumo_atualizado.csv", "r") as file:
-        file_content = file.read()
+    
+    file_content = carga_data.to_csv(index=False)
     push_to_github(repo_name, file_name, commit_message, file_content, token)
 
 carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
