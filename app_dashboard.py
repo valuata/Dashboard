@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
@@ -62,12 +61,13 @@ def authenticate_github(token):
 
 def push_to_github(repo_name, file_name, commit_message, file_content, token):
     g = authenticate_github(token)
-    repo = g.get_user().get_repo(repo_name)
+    repo = g.get_repo(repo_name)
+
     file = repo.get_contents(file_name)
-        
+
         # Update the file
     repo.update_file(file.path, commit_message, file_content, file.sha)
-    st.success(f"File {file_name} updated successfully!")
+
 
 arquivo_data = 'data_atual.txt'
 
@@ -82,31 +82,28 @@ def ler_data_arquivo():
 def atualizar_data_arquivo():
     with open(arquivo_data, 'w') as file:
         file.write(datetime.today().strftime('%d/%m/%Y'))
-    
+
     with open(arquivo_data, 'r') as file:
         file_content = file.read()
-    push_to_github(repo_name, file_name, commit_message, file_content, token)
+    push_to_github(repo_name, "data_atual.txt", "Update Data", file_content, token)
 
 # Título da página
 st.title("Carga")
 
-st.write("oii")
 with open("token1.txt", 'r') as file:
         token1 = file.read()
-st.write(token1)
 
 with open("token2.txt", 'r') as file:
         token2 = file.read()
-st.write(token2)
 
 token = token1 + token2
-st.write(token)
 repo_name = "valuata/Dashboard"  #GitHub repository name
 file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
 commit_message = "Update Carga_Consumo"  #  commit message
 
 # Obter a data atual
 data_atual = datetime.today()
+
 data_arquivo = ler_data_arquivo()
 
 if data_arquivo is None or (data_atual > data_arquivo and data_atual.hour >= 2):
