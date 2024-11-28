@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
-from datetime import datetime
+from datetime import datetime, timedelta
 st.set_page_config(page_title="Carga", layout="wide")
 import streamlit as st
 
@@ -57,38 +57,27 @@ def aggregate_data(data, frequency):
 st.title("Carga")
 
 # Carregar os dados
-carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
-    failure = False
-    i = 2000
-    df_carga = pd.DataFrame()  # Initialize the dataframe
+#carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
 
-    while not failure:
-        url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_energia_di/CARGA_ENERGIA_{i}.csv'
-        try:
-            # Read the CSV directly from the URL with delimiter ';'
-            dados_carga = pd.read_csv(url, delimiter=';')
-        except Exception as e:
-            # If an error occurs while loading the CSV, stop the loop
-            failure = True
-            # Optionally, print the error to debug
-            # print(f"Erro ao carregar o arquivo CSV: {e}")
-
-        if i == 2000:
-            # Initialize the dataframe with the first chunk of data
-            df_carga = dados_carga
-        elif not failure:  # Concatenate the new data if no failure occurred
-            df_carga = pd.concat([df_carga, dados_carga])
-
-        i += 1  # Increment the index for the next file
-
-    # Drop 'nom_subsistema' column
-    df_carga.drop(columns='nom_subsistema', inplace=True)
-    # Reset index of the dataframe
-    df_carga = df_carga.reset_index(drop=True)
-    # Replace values in the dataframe
-    df_carga.replace({'SE': 'SE/CO'}, inplace=True)
-
-    carga_data = df_carga  # Final result
+failure = False; i = 2000
+df_carga = pd.DataFrame
+while failure == False:
+    url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_energia_di/CARGA_ENERGIA_{i}.csv'
+    try:
+        # Lendo o CSV diretamente da URL com delimitador ';'
+        dados_carga = pd.read_csv(url, delimiter=';')
+    except Exception as e:
+        # print(f"Erro ao carregar o arquivo CSV: {e}")
+        failure = True
+    if i == 2000:
+        df_carga = dados_carga
+    elif failure == False: 
+        df_carga = pd.concat([df_carga, dados_carga])
+    i = i + 1
+df_carga.drop(columns= 'nom_subsistema', inplace=True)
+df_carga = df_carga.reset_index(drop=True)
+df_carga.replace({'SE': 'SE/CO'}, inplace=True)
+carga_data = df_carga
 
 carga_data['din_instante'] = pd.to_datetime(carga_data['din_instante'].str.slice(0, 10), format="%Y-%m-%d")
 
