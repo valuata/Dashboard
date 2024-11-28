@@ -1,21 +1,25 @@
-name: Usar Token do GitHub
+name: Run Python Script
 
 on:
   push:
     branches:
-      - main  
+      - main  # Ou qualquer outra branch que você deseja usar
 
 jobs:
-  use-token:
-    runs-on: windows-latest  
+  run-python-script:
+    runs-on: windows-latest  # Ambiente onde o código será executado
 
     steps:
-      - name: Verificar repositório
-        uses: actions/checkout@v3  # Faz o checkout do repositório
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Usar o token para autenticação
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+
+      - name: Run the Python script
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}  
+          TOKEN: ${{ secrets.TOKEN }}  # Acesse o secret diretamente aqui
         run: |
-          echo "Token do GitHub está pronto para uso."
-          # Aqui você pode rodar comandos que utilizam o token, como interagir com a API do GitHub
+          python seu_script.py  # Execute seu código Python
