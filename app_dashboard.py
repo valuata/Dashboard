@@ -93,8 +93,9 @@ st.title("Carga")
 import os
 from github import Github
 
-
+st.write("oiee")
 token = os.getenv('TOKEN')
+st.write("oiee")
 repo_name = "valuata/Dashboard"  #GitHub repository name
 file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
 commit_message = "Update Carga_Consumo"  #  commit message
