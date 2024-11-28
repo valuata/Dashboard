@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
@@ -89,12 +90,17 @@ def atualizar_data_arquivo():
 # Título da página
 st.title("Carga")
 
-
+st.write("oii")
 with open("token1.txt", 'r') as file:
         token1 = file.read()
+st.write(token1)
+
 with open("token2.txt", 'r') as file:
         token2 = file.read()
+st.write(token2)
+
 token = token1 + token2
+st.write(token)
 repo_name = "valuata/Dashboard"  #GitHub repository name
 file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
 commit_message = "Update Carga_Consumo"  #  commit message
