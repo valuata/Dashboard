@@ -17,13 +17,8 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: '3.9'
-          
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+
           
       - name: Run the Python script
         env:
           TOKEN: ${{ secrets.TOKEN }}  # Acesse o secret diretamente aqui
-        run: |
-          python app_dashboard.py  # Execute seu código Python
