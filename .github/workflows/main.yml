@@ -22,4 +22,4 @@ jobs:
         env:
           TOKEN: ${{ secrets.TOKEN }}  # Acesse o secret diretamente aqui
         run: |
-          python seu_script.py  # Execute seu código Python
+          python app_dashboard.py  # Execute seu código Python
