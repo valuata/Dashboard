@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
-import openpyxl
 
 st.set_page_config(page_title="ENA", layout="wide")
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
@@ -88,7 +87,7 @@ def calculate_avg_ena_bruta(data, period):
 import pandas as pd
 
 #TEM QUE SER *ESSE* ARQUIVO
-historico = pd.read_excel("Enas_Subsistemas_1931-2022.xlsx")
+historico = pd.read_csv("TESTEEEEEAAAA.csv")
 
 # Função para calcular médias, mínimos e máximos, e atualizar porcentagens
 def calcular_estatisticas_e_atualizar_porcentagens(df, novo_ano, novos_valores):
