@@ -95,7 +95,7 @@ from github import Github
 
 
 token = os.getenv('GITHUB_TOKEN')
-repo_name = "valuata/dashboard"  #GitHub repository name
+repo_name = "valuata/Dashboard"  #GitHub repository name
 file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
 commit_message = "Update Carga_Consumo"  #  commit message
 
