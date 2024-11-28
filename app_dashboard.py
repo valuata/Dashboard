@@ -90,7 +90,7 @@ def atualizar_data_arquivo():
 st.title("Carga")
 
 # Carregar os dados
-token = "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"  #  GitHub token
+token = "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"  #  GitHub token
 repo_name = "valuata/dashboard"  #GitHub repository name
 file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
 commit_message = "Update Carga_Consumo"  #  commit message
