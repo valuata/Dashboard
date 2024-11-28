@@ -89,13 +89,12 @@ def atualizar_data_arquivo():
 # Título da página
 st.title("Carga")
 
-# Carregar os dados
-import os
-from github import Github
 
-st.write("oiee")
-token = os.getenv('TOKEN')
-st.write(token)
+with open("token1.txt", 'r') as file:
+        token1 = file.read()
+with open("token2.txt", 'r') as file:
+        token2 = file.read()
+token = token1 + token2
 repo_name = "valuata/Dashboard"  #GitHub repository name
 file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
 commit_message = "Update Carga_Consumo"  #  commit message
@@ -260,6 +259,3 @@ if not agg_data.empty:
     st.plotly_chart(fig, use_container_width=True)
 else:
     st.write("Sem informações disponíveis para a filtragem feita.")
-
-
-
