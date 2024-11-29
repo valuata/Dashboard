@@ -134,7 +134,7 @@ data_atual = datetime.today()
 
 data_arquivo = ler_data_arquivo()
 
-if data_arquivo is None or (data_atual > data_arquivo and data_atual.hour >= 2):
+if (data_atual > data_arquivo and data_atual.hour >= 2):
     import pandas as pd
 
     #TEM QUE SER *ESSE* ARQUIVO
@@ -156,6 +156,7 @@ if data_arquivo is None or (data_atual > data_arquivo and data_atual.hour >= 2):
             
         df = pd.concat([df, pd.DataFrame([nova_linha])], ignore_index=True)
             # Drop the last row (old mean) if it exists
+        df.iloc[:, 1:13] = df.iloc[:, 1:13].apply(pd.to_numeric, errors='coerce')  # Converts non-numeric values to NaN
         df['(min)MWmed'] = df.iloc[:, 1:13].min(axis=1)
         df['(jnd)MWmed'] = df.iloc[:, 1:13].mean(axis=1)
         df['(max)MWmed'] = df.iloc[:, 1:13].max(axis=1)
