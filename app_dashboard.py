@@ -242,7 +242,7 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 earm_data = pd.read_csv('EARM_atualizado.csv')
 
 # Carregar os dados
-coltitle, colesp , coldownload= st.columns([1, 1, 1, 1])
+coltitle, colesp , coldownload= st.columns([1, 1, 1])
 with coltitle:
     st.title("Reservatórios")
 
