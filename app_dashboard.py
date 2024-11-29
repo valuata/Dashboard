@@ -251,6 +251,7 @@ with colesp:
 
 with coldownload:
     csv = earm_data.to_csv(index=False)
+    st.write("")
     st.download_button(
         label= "Download",
         data= csv,
