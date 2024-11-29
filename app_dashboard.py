@@ -133,12 +133,9 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 
 carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
 # Carregar os dados
-coltitle, colesp , coldownload= st.columns([1, 1, 1])
+coltitle, coldownload= st.columns([5, 1])
 with coltitle:
-    st.title("Reservatórios")
-
-with colesp:
-    st.title("")
+    st.title("Carga")
 
 with coldownload:
     csv = carga_data.to_csv(index=False)
