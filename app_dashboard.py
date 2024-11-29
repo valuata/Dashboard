@@ -248,7 +248,7 @@ if st.button("🔍 Gerar Comparação"):
     for i, filter_set in enumerate(st.session_state.selected_filters):
         data = filter_set["data"]
         tipo = filter_set["tipo"]
-        forecast_data = filter_set["forecast_data"]
+        forecast_data = (filter_set[filter_set["forecast_data"] != '0/2023']["forecast_data"])
         
         # Se o tipo for "SOLO", a previsão é ignorada
         if tipo == "SOLO":
