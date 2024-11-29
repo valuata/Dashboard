@@ -242,8 +242,24 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 earm_data = pd.read_csv('EARM_atualizado.csv')
 
 # Carregar os dados
-st.title("Reservatórios")
-earm_data = pd.read_csv('EARM_atualizado.csv')
+coltitle, colesp1 , colesp2, coldownload= st.columns([1, 1, 1, 1])
+with coltitle:
+    st.title("Reservatórios")
+
+with colesp1:
+    st.title("")
+
+with colesp2:
+    st.title("")
+with coldownload:
+    csv = earm_data.to_csv(index=False)
+    st.download_button(
+        label= "Download",
+        data= csv,
+        file_name= f'Dados_EARM_({data_atual})',
+        mime="text/csv",
+    )
+
 earm_data['ear_data'] = pd.to_datetime(earm_data['ear_data'])
 
 # Última data disponível
