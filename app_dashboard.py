@@ -1,11 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
-from datetime import datetime
+from datetime import datetime, timedelta
 from github import Github
 
-st.set_page_config(page_title="EARM", layout="wide")
+st.set_page_config(page_title="Carga", layout="wide")
+import streamlit as st
+
+# Hide the header action elements (e.g., hamburger menu)
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
+
+# Custom CSS for the page background and font
 st.markdown("""
     <style>
         * {
@@ -34,130 +39,22 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-def aggregate_data_earm(data, frequency, metric):
-    data['ear_data'] = pd.to_datetime(data['ear_data'])  # Garantir que 'ear_data' é datetime
 
+def aggregate_data(data, frequency):
+    data = data.set_index(['id_subsistema', 'din_instante'])
+
+    # Ajustando a frequência para resampling
     if frequency == 'Diário':
-        data = data.groupby(['id_subsistema', data['ear_data'].dt.date]).agg({metric: 'last', 'ear_verif_subsistema_percentual': 'last'}).reset_index()
-        data['ear_data'] = pd.to_datetime(data['ear_data'].astype(str))
-    
+        data = data.groupby(level='id_subsistema').resample('D', level='din_instante').last()
     elif frequency == 'Semanal':
-        data['week'] = data['ear_data'].dt.to_period('W-SAT').dt.end_time
-        data = data.groupby(['id_subsistema', 'week']).agg({metric: 'last', 'ear_verif_subsistema_percentual': 'last'}).reset_index()
-        data['ear_data'] = pd.to_datetime(data['week'])
-        data.drop(columns=['week'], inplace=True)
-    
+        data = data.groupby(level='id_subsistema').resample('W-SAT', level='din_instante').last()
     elif frequency == 'Mensal':
-        data['month'] = data['ear_data'].dt.to_period('M').dt.end_time
-        data = data.groupby(['id_subsistema', 'month']).agg({metric: 'last', 'ear_verif_subsistema_percentual': 'last'}).reset_index()
-        data['ear_data'] = pd.to_datetime(data['month'])
-        data.drop(columns=['month'], inplace=True)
+        data = data.groupby(level='id_subsistema').resample('M', level='din_instante').last()
 
-    return data[['ear_data', 'id_subsistema', 'ear_verif_subsistema_mwmes', 'ear_verif_subsistema_percentual']]
-
-def make_subsystem_gauge_charts(data, metric_column, sim_column):
-    fig = go.Figure()
-
-    # Define a ordem dos velocímetros para garantir que sejam colocados de forma organizada
-    gauges_order = ['SE/CO', 'S', 'NE', 'N', 'BRASIL']
-
-    subsystems = ['SE/CO', 'S', 'NE', 'N']
-    num_gauges = len(gauges_order)  # Número total de velocímetros
-
-    # Ajusta a largura dos velocímetros dinamicamente com base no número de velocímetros
-    max_gauge_width = 0.18  # Largura máxima dos velocímetros
-    gap = 0.05  # Espaço entre os velocímetros
-
-    # Calcular a largura total necessária para acomodar todos os velocímetros e seus gaps
-    total_required_width = num_gauges * (max_gauge_width + gap) - gap
+    data = data.reset_index()
     
-    # Ajustar a largura de cada velocímetro para garantir que o total não ultrapasse 1
-    if total_required_width > 1:
-        gauge_width = (1 - (num_gauges - 1) * gap) / num_gauges
-    else:
-        gauge_width = max_gauge_width
+    return data[['din_instante', 'id_subsistema', 'val_cargaenergiamwmed']]
 
-    # Para cada subsistema, adiciona um velocímetro
-    for i, subsystem in enumerate(subsystems):
-        subsystem_data = data[data['id_subsistema'] == subsystem]
-        percentage = subsystem_data[metric_column].iloc[0]  # Get the percentage for the latest date
-        formatted_percentage = "{:.1f}".format(percentage)
-
-        bar_color = "#67aeaa"
-
-        # Calcula o domínio de x de forma proporcional
-        x_start = i * (gauge_width + gap)
-        x_end = x_start + gauge_width
-
-        # Calculando o tamanho da fonte com base na largura da tela
-        font_size = 30  # Valor padrão
-        screen_width = st.query_params.get("width", [1024])[0]  # Obter a largura da tela
-        if screen_width < 800:
-            font_size = 20  # Para telas pequenas
-        elif screen_width < 1200:
-            font_size = 25  # Para telas médias
-
-        # Adiciona o velocímetro ao gráfico
-        fig.add_trace(go.Indicator(
-            mode="gauge+number",  # Inclui o número e a diferença
-            value=percentage,
-            number={
-                "valueformat": ".1f",  # Formato do número com uma casa decimal
-                "suffix": "%",  # Adiciona o símbolo '%' ao número
-                "font": {"size": font_size}  # Tamanho do número, ajustado dinamicamente
-            },
-            title={"text": f"{subsystem}", "font": {"size": font_size}},  # Ajuste do tamanho do título
-            gauge={
-                "axis": {"range": [None, 100]},  # Garante que o range vai de 0 a 100
-                "bar": {"color": bar_color},
-                "bgcolor": "#323e47",
-                "steps": [{"range": [0, 100], "color": "#323e47"}]
-            },
-            domain={'x': [x_start, x_end], 'y': [0, 1]},  # Ajusta a posição com base no índice
-        ))
-
-    # Para o Brasil, mostra a média ou um valor geral
-    sim_percentage = data[sim_column].max()
-    formatted_sim_percentage = "{:.1f}".format(sim_percentage)
-
-    sim_bar_color = "#67aeaa"
-
-    # Cálculo da posição para o Brasil (último velocímetro)
-    x_start_brasil = 4 * (gauge_width + gap)
-    x_end_brasil = x_start_brasil + gauge_width
-
-    # Ajustando tamanho de fonte para o Brasil também
-    font_size_brasil = font_size  # Mantém o mesmo tamanho de fonte
-
-    # Adiciona o velocímetro para o Brasil
-    fig.add_trace(go.Indicator(
-        mode="gauge+number",
-        value=sim_percentage,
-        number={
-                "valueformat": ".1f",  # Formato do número com uma casa decimal
-                "suffix": "%",  # Adiciona o símbolo '%' ao número
-                "font": {"size": font_size_brasil}  # Tamanho do número, ajustado dinamicamente
-            },
-        title={"text": "BRASIL", "font": {"size": font_size_brasil}},  # Ajuste do título para o Brasil
-        gauge={
-            "axis": {"range": [None, 100]},
-            "bar": {"color": sim_bar_color},
-            "bgcolor": "#323e47",
-            "steps": [{"range": [0, 100], "color": "#323e47"}]
-        },
-        domain={'x': [x_start_brasil, x_end_brasil], 'y': [0, 1]},  # Ajusta a posição para o Brasil
-    ))
-
-    # Ajusta o layout do gráfico
-    fig.update_layout(
-        title="Nível dos reservatórios (%):",
-        grid={'rows': 1, 'columns': 5},
-        showlegend=False,
-        height=350,  # Ajusta a altura para acomodar os velocímetros
-        margin={"l": 0, "r": 0, "t": 30, "b": 0},  # Reduz margens para dar mais espaço aos gráficos
-    )
-
-    return fig
 
 def ler_data_arquivo():
     try:
@@ -172,7 +69,6 @@ arquivo_data = 'data_atual_earm.txt'
 data_arquivo = ler_data_arquivo()
 
 if (data_atual > data_arquivo and data_atual.hour >= 2):
-
     def authenticate_github(token):
         g = Github(token)
         return g
@@ -193,7 +89,7 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 
         with open(arquivo_data, 'r') as file:
             file_content = file.read()
-        push_to_github(repo_name, "data_atual_earm.txt", "Update Data", file_content, token)
+        push_to_github(repo_name, "data_atual.txt", "Update Data", file_content, token)
 
     with open("token1.txt", 'r') as file:
             token1 = file.read()
@@ -203,44 +99,39 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 
     token = token1 + token2
     repo_name = "valuata/Dashboard"  #GitHub repository name
-    file_name = "EARM_atualizado.csv"  #  desired file name
-    commit_message = "Update EARM"  #  commit message
+    file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
+    commit_message = "Update Carga_Consumo"  #  commit message
 
-
-    failure = False; i = 2000
-    df_earm = pd.DataFrame
+    failure = False
+    i = 2000
+    df_carga = pd.DataFrame()
+    
     while failure == False:
-        url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/ear_subsistema_di/EAR_DIARIO_SUBSISTEMA_{i}.csv'
+        url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_energia_di/CARGA_ENERGIA_{i}.csv'
         try:
             # Lendo o CSV diretamente da URL com delimitador ';'
-            dados_earm = pd.read_csv(url, delimiter=';')
+            dados_carga = pd.read_csv(url, delimiter=';')
         except Exception as e:
-            # print(f"Erro ao carregar o arquivo CSV: {e}")
+            # Caso haja erro ao carregar o arquivo, sai do loop
             failure = True
         if i == 2000:
-            df_earm = dados_earm
-        elif failure == False: 
-            df_earm = pd.concat([df_earm, dados_earm])
+            df_carga = dados_carga
+        elif failure == False:
+            df_carga = pd.concat([df_carga, dados_carga])
         i = i + 1
-    df_earm.drop(columns= 'nom_subsistema', inplace=True)
-    sum_ear_verif_subsistema_mwmes = df_earm['ear_verif_subsistema_mwmes'].sum()
-    sum_ear_max_subsistema = df_earm['ear_max_subsistema'].sum()
-
-    # Step 2: Add a new column with the ratio
-    df_earm['verif_max_ratio'] = (sum_ear_verif_subsistema_mwmes / sum_ear_max_subsistema)*100
-
-    df_earm.reset_index(drop=True, inplace=True)
-    df_earm.replace({'SE': 'SE/CO'}, inplace=True)
-    earm_data = df_earm
+    
+    df_carga.drop(columns= 'nom_subsistema', inplace=True)
+    df_carga = df_carga.reset_index(drop=True)
+    df_carga.replace({'SE': 'SE/CO'}, inplace=True)
+    carga_data = df_carga
     
     # Atualizar o arquivo .txt com a data atual
     atualizar_data_arquivo()
     
-    file_content = earm_data.to_csv(index=False)
+    file_content = carga_data.to_csv(index=False)
     push_to_github(repo_name, file_name, commit_message, file_content, token)
 
-earm_data = pd.read_csv('EARM_atualizado.csv')
-
+carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
 # Carregar os dados
 coltitle, colesp , coldownload= st.columns([1, 1, 1])
 with coltitle:
@@ -250,49 +141,36 @@ with colesp:
     st.title("")
 
 with coldownload:
-    csv = earm_data.to_csv(index=False)
+    csv = carga_data.to_csv(index=False)
+    st.write("")
     st.write("")
     st.download_button(
         label= "Download",
         data= csv,
-        file_name= f'Dados_EARM_({data_atual})',
+        file_name= f'Dados_Carga_({data_atual})',
         mime="text/csv",
     )
+carga_data['din_instante'] = pd.to_datetime(carga_data['din_instante'].str.slice(0, 10), format="%Y-%m-%d")
 
-earm_data['ear_data'] = pd.to_datetime(earm_data['ear_data'])
+# Controlador de intervalo de datas
+min_date = carga_data['din_instante'].min().date()
+max_date = carga_data['din_instante'].max().date()
 
-# Última data disponível
-latest_date = earm_data['ear_data'].max()
-latest_data = earm_data[earm_data['ear_data'] == latest_date]
-
-# Gráficos de gauge para os subsistemas
-fig_atual_sim = make_subsystem_gauge_charts(latest_data, 'ear_verif_subsistema_percentual', 'verif_max_ratio')
-st.plotly_chart(fig_atual_sim)
-
-st.write("---")
-min_date = earm_data['ear_data'].min().date()
-max_date = earm_data['ear_data'].max().date()
-
-# Intervalo de datas dos últimos 5 anos
+# Calcular o intervalo de 5 anos atrás
 start_date_default = max_date.replace(year=max_date.year - 5, month=1, day=1)
-end_date_slider = max_date
 
-# Selecione o intervalo de datas usando um slider
+# Slider de intervalo de datas
 start_date_slider, end_date_slider = st.slider(
     "Selecione o intervalo de datas",
     min_value=min_date,
     max_value=max_date,
-    value=(start_date_default, end_date_slider),
-    format="DD/MM/YYYY",
-    key="slider_top_date_range"
+    value=(start_date_default, max_date),
+    format="DD/MM/YYYY"
 )
 
-# Filtros para o resto da página
-col3, col4 , col1, col2= st.columns([1, 1, 1, 1])
+col3, col4, col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
-    frequency = st.radio("Frequência", ['Diário', 'Semanal', 'Mensal'], index=2)  # Começar com "Mensal" selecionado
-    metric = 'MWmês'
-
+    frequency = st.radio("Frequência", ['Diário', 'Semanal', 'Mensal'], index=2)  # Start with 'Mensal'
 with col2:
     selected_subsystems = st.multiselect(
         "Selecione os subsistemas",
@@ -304,198 +182,96 @@ with col3:
 with col4:
     end_date_input = st.date_input("Fim", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
 
+# Filtrar os dados com base no intervalo de datas selecionado
+filtered_data = carga_data[(carga_data['din_instante'] >= pd.to_datetime(start_date_input)) & 
+                           (carga_data['din_instante'] <= pd.to_datetime(end_date_input))]
 
-# Filtragem por data
-start_date = start_date_input
-end_date = end_date_input
-filtered_data = earm_data[(earm_data['ear_data'] >= pd.to_datetime(start_date)) & 
-                          (earm_data['ear_data'] <= pd.to_datetime(end_date))]
+# Agregar os dados com base na frequência selecionada
+agg_data = aggregate_data(filtered_data, frequency)
 
-# Seleção da coluna para a métrica
-metric_column = 'ear_verif_subsistema_mwmes'
+# Filtrar os dados para incluir apenas os subsistemas selecionados
+agg_data = agg_data[agg_data['id_subsistema'].isin(selected_subsystems)]
 
-# Agregar dados de acordo com a frequência
-agg_data = aggregate_data_earm(filtered_data, frequency, metric_column)
-
-# Definir a lista de cores antes de usar
-colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']
-
-# Ordenar os subsistemas selecionados para garantir a ordem correta
-selected_subsystems = sorted(selected_subsystems, key=lambda x: ['SE/CO', 'S', 'NE', 'N'].index(x))
-
-# Gráfico empilhado para a métrica "MWmês"
 if not agg_data.empty:
-    fig_stacked = go.Figure()
+    # Preparar o gráfico de barras empilhadas
+    fig = go.Figure()
 
-    for i, subsystem in enumerate(selected_subsystems):
+    # Definir os subsistemas e suas cores
+    subsystems = selected_subsystems  # Usar a seleção do usuário
+    colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']  # Defina cores para cada subsistema
+    
+    # Adicionar uma trace para cada subsistema
+    for i, subsystem in enumerate(subsystems):
         subsystem_data = agg_data[agg_data['id_subsistema'] == subsystem]
         if not subsystem_data.empty:
+            # Preparar dados personalizados para exibir no hover
             custom_data = []
             for idx, row in subsystem_data.iterrows():
-                se_val = agg_data[(agg_data['id_subsistema'] == 'SE/CO') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                s_val = agg_data[(agg_data['id_subsistema'] == 'S') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                
+                # Coletar os valores de cada subsistema no mesmo instante de tempo
+                se_val = agg_data[(agg_data['id_subsistema'] == 'SE/CO') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
+                s_val = agg_data[(agg_data['id_subsistema'] == 'S') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
+                ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
+                n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
+                # Calcular a soma para aquela data
                 sum_val = (se_val[0] if len(se_val) > 0 else 0) + \
                           (s_val[0] if len(s_val) > 0 else 0) + \
                           (ne_val[0] if len(ne_val) > 0 else 0) + \
                           (n_val[0] if len(n_val) > 0 else 0)
-                
                 custom_data.append([se_val[0] if len(se_val) > 0 else 0,
                                     s_val[0] if len(s_val) > 0 else 0,
                                     ne_val[0] if len(ne_val) > 0 else 0,
                                     n_val[0] if len(n_val) > 0 else 0,
                                     sum_val])
-
-            fig_stacked.add_trace(go.Bar(
-                x=subsystem_data['ear_data'], 
-                y=subsystem_data[metric_column], 
+            
+            # Adicionar a trace do subsistema
+            fig.add_trace(go.Bar(
+                x=subsystem_data['din_instante'],
+                y=subsystem_data['val_cargaenergiamwmed'],
                 name=subsystem,
-                marker_color=colors[i],  # Cor para cada subsistema
-                hovertemplate='%{x}: ' + 'BRASIL: %{customdata[4]:,.1f}<br>' +  # Modificado para 1 casa decimal e separador de milhar
-                              'SE: %{customdata[0]:,.1f}<br>' + 
-                              'S: %{customdata[1]:,.1f}<br>' + 
-                              'NE: %{customdata[2]:,.1f}<br>' + 
-                              'N: %{customdata[3]:,.1f}<br>' +
-                              '<extra></extra>',
+                marker_color=colors[i],
+                hovertemplate=(  
+                    '%{x}: ' +  # Mostrar a data
+                    'Soma: %{customdata[4]:,.1f}<br>' +
+                    'SE: %{customdata[0]:,.1f}<br>' +
+                    'S: %{customdata[1]:,.1f}<br>' +
+                    'NE: %{customdata[2]:,.1f}<br>' +
+                    'N: %{customdata[3]:,.1f}<br>' +
+                    '<extra></extra>'
+                ),
                 customdata=custom_data,
-                legendgroup=subsystem  
+                legendgroup=subsystem  # Usar o nome do subsistema para o grupo de legenda
             ))
 
-    fig_stacked.update_layout(
-        title=f"EARM - {metric} ({frequency})",
-        yaxis_title=metric,
-        yaxis_tickformat=",.0f",  # Adicionando separador de milhar com ponto
+    # Atualizar o layout do gráfico
+    fig.update_layout(
+        title=f"Carga/Consumo - {frequency}",
+        yaxis_title="Carga (MWmed)",
         barmode='stack',
-        xaxis=dict(tickformat="%d/%m/%Y"),  
         legend=dict(
-            x=0.5, y=-0.2, orientation='h', xanchor='center',
-            traceorder='normal',  
-            itemclick="toggleothers",  
-            tracegroupgap=0,
-            itemsizing='constant',  # Isso coloca o quadrado colorido à esquerda da legenda
-            itemwidth=30  # Ajuste do tamanho do quadrado colorido
+            orientation="h",
+            yanchor="bottom", 
+            y=-0.5,
+            xanchor="center",
+            x=0.5
         ),
+        width=1200
     )
-    st.plotly_chart(fig_stacked)
-    st.write("---")
 
+    # Ajustar os eixos x com base na frequência
+    if frequency == 'Diário':
+        fig.update_xaxes(dtick="D1", tickformat="%d/%m/%Y")
+    elif frequency == 'Semanal':
+        fig.update_xaxes(dtick="W1", tickformat="%d/%m/%Y")
+        fig.update_xaxes(tickvals=agg_data['din_instante'], tickmode='array')
+    else:
+        fig.update_xaxes(dtick="M1", tickformat="%d/%m/%Y")
+
+    # Atualizar o eixo Y para mostrar valores com uma casa decimal e separadores de milhar
+    fig.update_layout(
+        yaxis_tickformat=',.0f'  # Formatação para separador de milhar e 1 casa decimal
+    )
+
+    # Exibir o gráfico
+    st.plotly_chart(fig, use_container_width=True)
 else:
-    st.write("Nenhum dado disponível para os filtros selecionados.")
-
-
-min_date_bottom = earm_data['ear_data'].min().date()
-max_date_bottom = earm_data['ear_data'].max().date()
-
-# Intervalo de datas dos últimos 5 anos
-start_date_default_bottom = max_date_bottom.replace(year=max_date_bottom.year - 5, month=1, day=1)
-end_date_slider_bottom = max_date_bottom
-
-# Selecione o intervalo de datas usando um slider
-start_date_slider_bottom, end_date_slider_bottom = st.slider(
-    "Selecione o intervalo de datas",
-    min_value=min_date_bottom,
-    max_value=max_date_bottom,
-    value=(start_date_default_bottom, end_date_slider_bottom),
-    format="DD/MM/YYYY",
-    key="slider_bottom_date_range"  # Add unique key here
-)
-
-
-
-col3, col4 , col1, col2= st.columns([1, 1, 1, 1])
-with col1:
-    frequency_bottom = st.radio("Frequência", ['Diário', 'Semanal', 'Mensal'], index=2, key="bottom_freq")  # Começar com "Mensal" selecionado
-    metric = 'MWmês'
-
-with col2:
-    selected_subsystem_bottom = st.radio(
-        "Selecione um subsistema",
-        options=['SE/CO', 'S', 'NE', 'N'],
-        index=0,
-        key="bottom_sub"
-    )
-with col3:
-    start_date_input_bottom = st.date_input(
-        "Início", 
-        min_value=min_date_bottom, 
-        max_value=max_date_bottom, 
-        value=start_date_slider_bottom, 
-        format="DD/MM/YYYY", 
-        key="start_date_input_bottom"  # Unique key here
-    )
-with col4:
-    end_date_input_bottom = st.date_input(
-        "Fim", 
-        min_value=min_date_bottom, 
-        max_value=max_date_bottom, 
-        value=end_date_slider_bottom, 
-        format="DD/MM/YYYY", 
-        key="end_date_input_bottom"
-    )
-start_date_bottom = start_date_input_bottom
-end_date_bottom = end_date_input_bottom
-filtered_data_bottom = earm_data[(earm_data['ear_data'] >= pd.to_datetime(start_date_bottom)) & 
-                                 (earm_data['ear_data'] <= pd.to_datetime(end_date_bottom))]
-
-
-# Agregar dados de acordo com a frequência para os gráficos abaixo
-agg_data_bottom = aggregate_data_earm(filtered_data_bottom, frequency_bottom, 'ear_verif_subsistema_mwmes')
-
-# Definir a lista de cores antes de usar
-colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']
-
-# Iterando pelo subsistema selecionado e criando gráficos individuais (para gráficos abaixo)
-if not agg_data_bottom.empty:
-    subsystem_data_bottom = agg_data_bottom[agg_data_bottom['id_subsistema'] == selected_subsystem_bottom]
-
-    if not subsystem_data_bottom.empty:
-        fig_bottom = go.Figure()
-
-        fig_bottom.add_trace(go.Bar(
-            x=subsystem_data_bottom['ear_data'], 
-            y=subsystem_data_bottom['ear_verif_subsistema_mwmes'],  
-            name=selected_subsystem_bottom, 
-            marker_color=colors[0],
-            customdata=subsystem_data_bottom['ear_verif_subsistema_percentual'], 
-            hovertemplate=(
-                "Data: %{x|%d/%m/%Y}<br>"  # Formata a data da barra
-                "Valor: %{y:,.1f} MWmês<br>"  # Exibe a capacidade restante
-                "Capacidade utilizada: %{customdata:,.1f} %<br>"  # Exibe o valor de customdata
-            ),
-    
-        ))
-
-        max_value_bottom = earm_data[earm_data['id_subsistema'] == selected_subsystem_bottom].iloc[-1][f'ear_max_subsistema']
-        remaining_capacity_bottom = max_value_bottom - subsystem_data_bottom['ear_verif_subsistema_mwmes']
-
-        fig_bottom.add_trace(go.Bar(
-            x=subsystem_data_bottom['ear_data'],
-            y=remaining_capacity_bottom,  
-            name=f"{selected_subsystem_bottom} - Faltando",  
-            marker_color='rgba(0, 0, 0, 0.2)',
-            showlegend=False,
-        ))
-
-        fig_bottom.add_trace(go.Scatter(
-            x=subsystem_data_bottom['ear_data'], 
-            y=[max_value_bottom] * len(subsystem_data_bottom),  
-            mode='lines', 
-            name=f"{selected_subsystem_bottom} Max",  
-            line=dict(dash='dash', width=0),
-            showlegend= False
-        ))
-
-        fig_bottom.update_layout(
-            title=f"EARM - {selected_subsystem_bottom} ({frequency_bottom})",
-            yaxis_title='MWmês',
-            yaxis_tickformat=",.1f",  # Adicionando separador de milhar com ponto
-            barmode='stack',
-            xaxis=dict(tickformat="%d/%m/%Y"),  
-            legend=dict(x=0.5, y=-0.2, orientation='h', xanchor='center'),
-            showlegend= False
-        )
-        st.plotly_chart(fig_bottom)
-else:
-    st.write("Nenhum dado disponível para os filtros selecionados.")
+    st.write("Sem informações disponíveis para a filtragem feita.")
