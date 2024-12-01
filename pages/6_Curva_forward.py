@@ -59,6 +59,7 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
         footer {visivility: hidden;}
     </style>
