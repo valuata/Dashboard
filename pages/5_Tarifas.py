@@ -6,9 +6,6 @@ import plotly.graph_objects as go
 # Configuração da página
 st.set_page_config(page_title="Tarifas", layout="wide")
 
-# Título na tela
-st.title("Tarifas")
-
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
 st.markdown("""
     <style>
@@ -33,6 +30,7 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
         footer {visivility: hidden;}
     </style>
@@ -40,6 +38,21 @@ st.markdown("""
 
 # Carregar os dados
 tarifa = pd.read_csv('tarifa_atualizado.csv')
+
+coltitle, coldownload= st.columns([5, 1])
+with coltitle:
+    st.title("Tarifas")
+
+with coldownload:
+    csv = tarifa.to_csv(index=False)
+    st.write("")
+    st.write("")
+    st.download_button(
+        label= "Download",
+        data= csv,
+        file_name= f'Dados_Tarifas',
+        mime="text/csv",
+    )
 
 # Garantir que as datas estão no formato datetime
 tarifa['Início Vigência'] = pd.to_datetime(tarifa['Início Vigência'])
@@ -294,44 +307,3 @@ if not df_month_filtered.empty:
     st.plotly_chart(fig_mes)
 else:
     st.write(f"Nenhum dado encontrado para o mês {month} na região {region}.")
-
-
-# # Gráfico 3: Variação de Tarifas no Tempo
-# st.write("### Gráfico de Variação de Tarifas no Tempo")
-# if not tarifa.empty:
-#     # Aplicar filtros exceto o de data
-#     filtered_tarifa_variation = tarifa[
-#         (tarifa['Sigla'] == selected_sigla) &
-#         (tarifa['Subgrupo'] == selected_subgrupo) &
-#         (tarifa['Modalidade'] == selected_modalidade)
-#     ]
-
-#     # Calcular a variação (absoluta e percentual)
-#     filtered_tarifa_variation['Variação TUSD-TE'] = filtered_tarifa_variation['TUSD'] - filtered_tarifa_variation['TE']  # Variação absoluta
-#     filtered_tarifa_variation['% Variação'] = ((filtered_tarifa_variation['TUSD'] - filtered_tarifa_variation['TE']) / filtered_tarifa_variation['TE']) * 100  # Variação percentual
-
-#     # Criar o gráfico de dispersão com o tempo no eixo X
-#     fig_variation_time = px.scatter(
-#         filtered_tarifa_variation,
-#         x='Início Vigência',  # Eixo X: Tempo
-#         y='Variação TUSD-TE',  # Eixo Y: Variação absoluta
-#         size=filtered_tarifa_variation['Variação TUSD-TE'].abs(),  # Tamanho proporcional ao valor absoluto da variação
-#         color='Sigla',  # Cor por distribuidora
-#         hover_data=['Subgrupo', 'Modalidade', '% Variação', 'TUSD', 'TE'],  # Informações adicionais
-#         labels={
-#             'Início Vigência': 'Data de Vigência',
-#             'Variação TUSD-TE': 'Variação Absoluta (R$)',
-#             'Sigla': 'Distribuidora'
-#         },
-#         title="Variação de Tarifas no Tempo"
-#     )
-
-#     # Personalizar o layout do gráfico
-#     fig_variation_time.update_layout(
-#         xaxis_title="Período de Vigência",
-#         yaxis_title="Variação TUSD-TE (R$)",
-#         legend_title="Distribuidora"
-#     )
-#     st.plotly_chart(fig_variation_time)
-# else:
-#     st.write("Nenhum dado disponível para calcular a variação.")
