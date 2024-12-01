@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
+from github import Github
+
 st.set_page_config(page_title="Carga", layout="wide")
 import streamlit as st
 
@@ -32,10 +34,12 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
         footer {visivility: hidden;}
     </style>
 """, unsafe_allow_html=True)
+
 
 def aggregate_data(data, frequency):
     data = data.set_index(['id_subsistema', 'din_instante'])
@@ -52,11 +56,102 @@ def aggregate_data(data, frequency):
     
     return data[['din_instante', 'id_subsistema', 'val_cargaenergiamwmed']]
 
-# Título da página
-st.title("Carga")
+def format_week_date(date):
+    # Calcula o número da semana dentro do mês
+    week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
+    return f"S{week_number} {date.strftime('%m/%Y')}"
 
-# Carregar os dados
+def ler_data_arquivo():
+    try:
+        with open(arquivo_data, 'r') as file:
+            data_arquivo = file.read().strip()
+            return datetime.strptime(data_arquivo, '%d/%m/%Y') if data_arquivo else None
+    except FileNotFoundError:
+        return None
+
+data_atual = datetime.today()
+arquivo_data = 'data_atual_earm.txt'
+data_arquivo = ler_data_arquivo()
+
+if (data_atual > data_arquivo and data_atual.hour >= 2):
+    def authenticate_github(token):
+        g = Github(token)
+        return g
+
+    def push_to_github(repo_name, file_name, commit_message, file_content, token):
+
+        g = authenticate_github(token)
+        repo = g.get_repo(repo_name)
+
+        file = repo.get_contents(file_name)
+
+            # Update the file
+        repo.update_file(file.path, commit_message, file_content, file.sha)
+
+    def atualizar_data_arquivo():
+        with open(arquivo_data, 'w') as file:
+            file.write(datetime.today().strftime('%d/%m/%Y'))
+
+        with open(arquivo_data, 'r') as file:
+            file_content = file.read()
+        push_to_github(repo_name, "data_atual.txt", "Update Data", file_content, token)
+
+    with open("token1.txt", 'r') as file:
+            token1 = file.read()
+
+    with open("token2.txt", 'r') as file:
+            token2 = file.read()
+
+    token = token1 + token2
+    repo_name = "valuata/Dashboard"  #GitHub repository name
+    file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
+    commit_message = "Update Carga_Consumo"  #  commit message
+
+    failure = False
+    i = 2000
+    df_carga = pd.DataFrame()
+    
+    while failure == False:
+        url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_energia_di/CARGA_ENERGIA_{i}.csv'
+        try:
+            # Lendo o CSV diretamente da URL com delimitador ';'
+            dados_carga = pd.read_csv(url, delimiter=';')
+        except Exception as e:
+            # Caso haja erro ao carregar o arquivo, sai do loop
+            failure = True
+        if i == 2000:
+            df_carga = dados_carga
+        elif failure == False:
+            df_carga = pd.concat([df_carga, dados_carga])
+        i = i + 1
+    
+    df_carga.drop(columns= 'nom_subsistema', inplace=True)
+    df_carga = df_carga.reset_index(drop=True)
+    df_carga.replace({'SE': 'SE/CO'}, inplace=True)
+    carga_data = df_carga
+    
+    # Atualizar o arquivo .txt com a data atual
+    atualizar_data_arquivo()
+    
+    file_content = carga_data.to_csv(index=False)
+    push_to_github(repo_name, file_name, commit_message, file_content, token)
+
 carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
+# Carregar os dados
+coltitle, coldownload= st.columns([5, 1])
+with coltitle:
+    st.title("Carga")
+
+with coldownload:
+    csv = carga_data.to_csv(index=False)
+    st.write("")
+    st.write("")
+    st.download_button(
+        label= "Download",
+        data= csv,
+        file_name= f'Dados_Carga_({data_atual})',
+        mime="text/csv",
+    )
 carga_data['din_instante'] = pd.to_datetime(carga_data['din_instante'].str.slice(0, 10), format="%Y-%m-%d")
 
 # Controlador de intervalo de datas
@@ -101,6 +196,8 @@ agg_data = agg_data[agg_data['id_subsistema'].isin(selected_subsystems)]
 
 if not agg_data.empty:
     # Preparar o gráfico de barras empilhadas
+    agg_data['week_label'] = agg_data['din_instante'].apply(format_week_date)
+
     fig = go.Figure()
 
     # Definir os subsistemas e suas cores
@@ -108,46 +205,61 @@ if not agg_data.empty:
     colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']  # Defina cores para cada subsistema
     
     # Adicionar uma trace para cada subsistema
-    for i, subsystem in enumerate(subsystems):
-        subsystem_data = agg_data[agg_data['id_subsistema'] == subsystem]
-        if not subsystem_data.empty:
-            # Preparar dados personalizados para exibir no hover
-            custom_data = []
-            for idx, row in subsystem_data.iterrows():
-                # Coletar os valores de cada subsistema no mesmo instante de tempo
-                se_val = agg_data[(agg_data['id_subsistema'] == 'SE/CO') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
-                s_val = agg_data[(agg_data['id_subsistema'] == 'S') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
-                ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
-                n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
-                # Calcular a soma para aquela data
-                sum_val = (se_val[0] if len(se_val) > 0 else 0) + \
-                          (s_val[0] if len(s_val) > 0 else 0) + \
-                          (ne_val[0] if len(ne_val) > 0 else 0) + \
-                          (n_val[0] if len(n_val) > 0 else 0)
-                custom_data.append([se_val[0] if len(se_val) > 0 else 0,
-                                    s_val[0] if len(s_val) > 0 else 0,
-                                    ne_val[0] if len(ne_val) > 0 else 0,
-                                    n_val[0] if len(n_val) > 0 else 0,
-                                    sum_val])
-            
-            # Adicionar a trace do subsistema
-            fig.add_trace(go.Bar(
-                x=subsystem_data['din_instante'],
-                y=subsystem_data['val_cargaenergiamwmed'],
-                name=subsystem,
-                marker_color=colors[i],
-                hovertemplate=(  
-                    '%{x}: ' +  # Mostrar a data
-                    'Soma: %{customdata[4]:,.1f}<br>' +
-                    'SE: %{customdata[0]:,.1f}<br>' +
-                    'S: %{customdata[1]:,.1f}<br>' +
-                    'NE: %{customdata[2]:,.1f}<br>' +
-                    'N: %{customdata[3]:,.1f}<br>' +
-                    '<extra></extra>'
-                ),
-                customdata=custom_data,
-                legendgroup=subsystem  # Usar o nome do subsistema para o grupo de legenda
-            ))
+    colors_dict = {
+        'SE/CO': '#323e47',
+        'S': '#68aeaa',
+        'NE': '#6b8b89',
+        'N': '#a3d5ce'
+    }
+
+    # Definir a ordem desejada dos subsistemas para a legenda
+    desired_subsystems_order = ['SE/CO', 'S', 'NE', 'N']
+
+    # Adicionar uma trace para cada subsistema na ordem desejada
+    for subsystem in desired_subsystems_order:
+        if subsystem in subsystems:
+            subsystem_data = agg_data[agg_data['id_subsistema'] == subsystem]
+            if not subsystem_data.empty:
+                # Preparar dados personalizados para exibir no hover
+                custom_data = []
+                for idx, row in subsystem_data.iterrows():
+                    # Coletar os valores de cada subsistema no mesmo instante de tempo
+                    se_val = agg_data[(agg_data['id_subsistema'] == 'SE/CO') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
+                    s_val = agg_data[(agg_data['id_subsistema'] == 'S') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
+                    ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
+                    n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
+                    # Calcular a soma para aquela data
+                    sum_val = (se_val[0] if len(se_val) > 0 else 0) + \
+                            (s_val[0] if len(s_val) > 0 else 0) + \
+                            (ne_val[0] if len(ne_val) > 0 else 0) + \
+                            (n_val[0] if len(n_val) > 0 else 0)
+                    custom_data.append([se_val[0] if len(se_val) > 0 else 0,
+                                        s_val[0] if len(s_val) > 0 else 0,
+                                        ne_val[0] if len(ne_val) > 0 else 0,
+                                        n_val[0] if len(n_val) > 0 else 0,
+                                        sum_val])
+
+                # Cor específica para o subsistema
+                color = colors_dict.get(subsystem, '#000000')  # Caso não encontre, define preto
+
+                # Adicionar a trace do subsistema
+                fig.add_trace(go.Bar(
+                    x=subsystem_data['din_instante'],
+                    y=subsystem_data['val_cargaenergiamwmed'],
+                    name=subsystem,
+                    marker_color=color,  # Atribuindo a cor específica
+                    hovertemplate=(  
+                        'Data: %{x}<br>' +
+                        'Brasil: %{customdata[4]:,.1f}<br>' +
+                        '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[0]:,.1f}<br>' +  # Cor de SE/CO
+                        '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[1]:,.1f}<br>' +  # Cor de S
+                        '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[2]:,.1f}<br>' +  # Cor de NE
+                        '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[3]:,.1f}<br>' +  # Cor de N
+                        '<extra></extra>'
+                    ),
+                    customdata=custom_data,
+                    legendgroup=subsystem  # Usar o nome do subsistema para o grupo de legenda
+                ))
 
     # Atualizar o layout do gráfico
     fig.update_layout(
@@ -159,19 +271,34 @@ if not agg_data.empty:
             yanchor="bottom", 
             y=-0.5,
             xanchor="center",
-            x=0.5
+            x=0.5,
+            traceorder="normal"  # Garante que a ordem da legenda seja conforme o esperado
         ),
         width=1200
     )
 
     # Ajustar os eixos x com base na frequência
     if frequency == 'Diário':
-        fig.update_xaxes(dtick="D1", tickformat="%d/%m/%Y")
+        fig.update_xaxes(
+            dtick="D1", 
+            tickformat="%d/%m/%Y", 
+            tickmode='auto',  # Deixa o Plotly determinar a frequência do tick
+            tickangle=45  # Rotaciona as labels para melhorar a legibilidade
+        )
     elif frequency == 'Semanal':
-        fig.update_xaxes(dtick="W1", tickformat="%d/%m/%Y")
-        fig.update_xaxes(tickvals=agg_data['din_instante'], tickmode='array')
+        fig.update_xaxes(
+            tickmode='array',  # Define os ticks manualmente
+            tickvals=agg_data['din_instante'],  # Usar as datas originais para as posições dos ticks
+            ticktext=agg_data['week_label'],  # Usar as labels de semana (ex: S1 Jan 2024)
+            nticks=5  # Definir o número máximo de ticks visíveis no eixo X
+        )
     else:
-        fig.update_xaxes(dtick="M1", tickformat="%d/%m/%Y")
+        fig.update_xaxes(
+            dtick="M1", 
+            tickformat="%m/%Y",
+            tickmode='auto',  # Deixa o Plotly determinar a frequência do tick
+            tickangle=45  # Rotaciona as labels para melhorar a legibilidade
+        )
 
     # Atualizar o eixo Y para mostrar valores com uma casa decimal e separadores de milhar
     fig.update_layout(
