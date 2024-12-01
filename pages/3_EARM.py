@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
+from datetime import datetime
+from github import Github
 
 st.set_page_config(page_title="EARM", layout="wide")
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
@@ -27,6 +29,7 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
         footer {visivility: hidden;}
     </style>
@@ -157,11 +160,104 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
 
     return fig
 
+def ler_data_arquivo():
+    try:
+        with open(arquivo_data, 'r') as file:
+            data_arquivo = file.read().strip()
+            return datetime.strptime(data_arquivo, '%d/%m/%Y') if data_arquivo else None
+    except FileNotFoundError:
+        return None
 
+data_atual = datetime.today()
+arquivo_data = 'data_atual_earm.txt'
+data_arquivo = ler_data_arquivo()
+
+if (data_atual > data_arquivo and data_atual.hour >= 2):
+
+    def authenticate_github(token):
+        g = Github(token)
+        return g
+
+    def push_to_github(repo_name, file_name, commit_message, file_content, token):
+
+        g = authenticate_github(token)
+        repo = g.get_repo(repo_name)
+
+        file = repo.get_contents(file_name)
+
+            # Update the file
+        repo.update_file(file.path, commit_message, file_content, file.sha)
+
+    def atualizar_data_arquivo():
+        with open(arquivo_data, 'w') as file:
+            file.write(datetime.today().strftime('%d/%m/%Y'))
+
+        with open(arquivo_data, 'r') as file:
+            file_content = file.read()
+        push_to_github(repo_name, "data_atual_earm.txt", "Update Data", file_content, token)
+
+    with open("token1.txt", 'r') as file:
+            token1 = file.read()
+
+    with open("token2.txt", 'r') as file:
+            token2 = file.read()
+
+    token = token1 + token2
+    repo_name = "valuata/Dashboard"  #GitHub repository name
+    file_name = "EARM_atualizado.csv"  #  desired file name
+    commit_message = "Update EARM"  #  commit message
+
+
+    failure = False; i = 2000
+    df_earm = pd.DataFrame
+    while failure == False:
+        url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/ear_subsistema_di/EAR_DIARIO_SUBSISTEMA_{i}.csv'
+        try:
+            # Lendo o CSV diretamente da URL com delimitador ';'
+            dados_earm = pd.read_csv(url, delimiter=';')
+        except Exception as e:
+            # print(f"Erro ao carregar o arquivo CSV: {e}")
+            failure = True
+        if i == 2000:
+            df_earm = dados_earm
+        elif failure == False: 
+            df_earm = pd.concat([df_earm, dados_earm])
+        i = i + 1
+    df_earm.drop(columns= 'nom_subsistema', inplace=True)
+    sum_ear_verif_subsistema_mwmes = df_earm['ear_verif_subsistema_mwmes'].sum()
+    sum_ear_max_subsistema = df_earm['ear_max_subsistema'].sum()
+
+    # Step 2: Add a new column with the ratio
+    df_earm['verif_max_ratio'] = (sum_ear_verif_subsistema_mwmes / sum_ear_max_subsistema)*100
+
+    df_earm.reset_index(drop=True, inplace=True)
+    df_earm.replace({'SE': 'SE/CO'}, inplace=True)
+    earm_data = df_earm
+    
+    # Atualizar o arquivo .txt com a data atual
+    atualizar_data_arquivo()
+    
+    file_content = earm_data.to_csv(index=False)
+    push_to_github(repo_name, file_name, commit_message, file_content, token)
+
+earm_data = pd.read_csv('EARM_atualizado.csv')
 
 # Carregar os dados
-st.title("Reservatórios")
-earm_data = pd.read_csv('EARM_atualizado.csv')
+coltitle, coldownload= st.columns([5, 1])
+with coltitle:
+    st.title("Reservatórios")
+
+with coldownload:
+    csv = earm_data.to_csv(index=False)
+    st.write("")
+    st.write("")
+    st.download_button(
+        label= "Download",
+        data= csv,
+        file_name= f'Dados_EARM_({data_atual})',
+        mime="text/csv",
+    )
+
 earm_data['ear_data'] = pd.to_datetime(earm_data['ear_data'])
 
 # Última data disponível
