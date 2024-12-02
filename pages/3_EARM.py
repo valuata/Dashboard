@@ -326,62 +326,93 @@ selected_subsystems = sorted(selected_subsystems, key=lambda x: ['SE/CO', 'S', '
 if not agg_data.empty:
     fig_stacked = go.Figure()
 
-    for i, subsystem in enumerate(selected_subsystems):
-        subsystem_data = agg_data[agg_data['id_subsistema'] == subsystem]
-        if not subsystem_data.empty:
-            custom_data = []
-            for idx, row in subsystem_data.iterrows():
-                se_val = agg_data[(agg_data['id_subsistema'] == 'SE/CO') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                s_val = agg_data[(agg_data['id_subsistema'] == 'S') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                
-                sum_val = (se_val[0] if len(se_val) > 0 else 0) + \
-                          (s_val[0] if len(s_val) > 0 else 0) + \
-                          (ne_val[0] if len(ne_val) > 0 else 0) + \
-                          (n_val[0] if len(n_val) > 0 else 0)
-                
-                custom_data.append([se_val[0] if len(se_val) > 0 else 0,
-                                    s_val[0] if len(s_val) > 0 else 0,
-                                    ne_val[0] if len(ne_val) > 0 else 0,
-                                    n_val[0] if len(n_val) > 0 else 0,
-                                    sum_val])
+    # Ordenação dos subsistemas conforme o seu índice
+    subsystems_order = ['SE/CO', 'S', 'NE', 'N']
+    colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']  # Cores correspondentes a cada subsistema
+    colors_dict = {
+        'SE/CO': '#323e47',
+        'S': '#68aeaa',
+        'NE': '#6b8b89',
+        'N': '#a3d5ce'
+    }
 
-            fig_stacked.add_trace(go.Bar(
-                x=subsystem_data['ear_data'], 
-                y=subsystem_data[metric_column], 
-                name=subsystem,
-                marker_color=colors[i],  # Cor para cada subsistema
-                hovertemplate='%{x}: ' + 'BRASIL: %{customdata[4]:,.1f}<br>' +  # Modificado para 1 casa decimal e separador de milhar
-                              'SE: %{customdata[0]:,.1f}<br>' + 
-                              'S: %{customdata[1]:,.1f}<br>' + 
-                              'NE: %{customdata[2]:,.1f}<br>' + 
-                              'N: %{customdata[3]:,.1f}<br>' +
-                              '<extra></extra>',
-                customdata=custom_data,
-                legendgroup=subsystem  
-            ))
+    # Iterando pelos subsistemas e criando as barras
+    for i, subsystem in enumerate(subsystems_order):
+        if subsystem in selected_subsystems:  # Verificar se o subsistema foi selecionado
+            subsystem_data = agg_data[agg_data['id_subsistema'] == subsystem]
+            if not subsystem_data.empty:
+                # Custom data para incluir as informações adicionais no hover
+                custom_data = []
+                for idx, row in subsystem_data.iterrows():
+                    se_val = agg_data[(agg_data['id_subsistema'] == 'SE/CO') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
+                    s_val = agg_data[(agg_data['id_subsistema'] == 'S') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
+                    ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
+                    n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
+                    
+                    sum_val = (se_val[0] if len(se_val) > 0 else 0) + \
+                              (s_val[0] if len(s_val) > 0 else 0) + \
+                              (ne_val[0] if len(ne_val) > 0 else 0) + \
+                              (n_val[0] if len(n_val) > 0 else 0)
+                    
+                    custom_data.append([se_val[0] if len(se_val) > 0 else 0,
+                                        s_val[0] if len(s_val) > 0 else 0,
+                                        ne_val[0] if len(ne_val) > 0 else 0,
+                                        n_val[0] if len(n_val) > 0 else 0,
+                                        sum_val])
 
+                # Criar o hovertemplate dinâmico com base nos subsistemas selecionados
+                hovertemplate = '%{x}: <br>' +  \
+                                'BRASIL: %{customdata[4]:,.1f}<br>'
+
+                if 'SE/CO' in selected_subsystems:
+                    hovertemplate += '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[0]:,.1f}<br>'
+                if 'S' in selected_subsystems:
+                    hovertemplate += '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[1]:,.1f}<br>'
+                if 'NE' in selected_subsystems:
+                    hovertemplate += '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[2]:,.1f}<br>'
+                if 'N' in selected_subsystems:
+                    hovertemplate += '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[3]:,.1f}<br>'
+
+                hovertemplate += '<extra></extra>'
+
+                # Adicionando as barras empilhadas para o subsistema
+                fig_stacked.add_trace(go.Bar(
+                    x=subsystem_data['ear_data'], 
+                    y=subsystem_data[metric_column], 
+                    name=subsystem,
+                    marker_color=colors[i],  # Cor para cada subsistema
+                    hovertemplate=hovertemplate,  # Usando o hovertemplate dinâmico
+                    customdata=custom_data,
+                    legendgroup=subsystem  
+                ))
+
+        if frequency == 'Mensal':
+            xaxis_format = "%m/%Y"  # Para frequência mensal
+        else:
+            xaxis_format = "%d/%m/%Y"  # Para outras frequências
+    # Ajuste do layout
     fig_stacked.update_layout(
         title=f"EARM - {metric} ({frequency})",
         yaxis_title=metric,
         yaxis_tickformat=",.0f",  # Adicionando separador de milhar com ponto
-        barmode='stack',
-        xaxis=dict(tickformat="%d/%m/%Y"),  
+        barmode='stack',  # Empilhamento das barras
+        xaxis=dict(tickformat=xaxis_format),  # Formatação da data no eixo X
         legend=dict(
             x=0.5, y=-0.2, orientation='h', xanchor='center',
             traceorder='normal',  
-            itemclick="toggleothers",  
+            itemclick="toggleothers",  # Permite que a legenda filtre por subsistema
             tracegroupgap=0,
-            itemsizing='constant',  # Isso coloca o quadrado colorido à esquerda da legenda
-            itemwidth=30  # Ajuste do tamanho do quadrado colorido
+            itemsizing='constant',  # Tamanho constante dos itens da legenda
+            itemwidth=30  # Tamanho do quadrado colorido na legenda
         ),
     )
+    
+    # Exibindo o gráfico
     st.plotly_chart(fig_stacked)
     st.write("---")
-
 else:
     st.write("Nenhum dado disponível para os filtros selecionados.")
+
 
 
 min_date_bottom = earm_data['ear_data'].min().date()
@@ -444,6 +475,12 @@ agg_data_bottom = aggregate_data_earm(filtered_data_bottom, frequency_bottom, 'e
 
 # Definir a lista de cores antes de usar
 colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']
+colors_dict = {
+        'SE/CO': '#323e47',
+        'S': '#68aeaa',
+        'NE': '#6b8b89',
+        'N': '#a3d5ce'
+    }
 
 # Iterando pelo subsistema selecionado e criando gráficos individuais (para gráficos abaixo)
 if not agg_data_bottom.empty:
@@ -456,7 +493,7 @@ if not agg_data_bottom.empty:
             x=subsystem_data_bottom['ear_data'], 
             y=subsystem_data_bottom['ear_verif_subsistema_mwmes'],  
             name=selected_subsystem_bottom, 
-            marker_color=colors[0],
+            marker_color=colors_dict[selected_subsystem_bottom],
             customdata=subsystem_data_bottom['ear_verif_subsistema_percentual'], 
             hovertemplate=(
                 "Data: %{x|%d/%m/%Y}<br>"  # Formata a data da barra
@@ -486,12 +523,17 @@ if not agg_data_bottom.empty:
             showlegend= False
         ))
 
+        if frequency_bottom == 'Mensal':
+            xaxis_format = "%m/%Y"  # Para frequência mensal
+        else:
+            xaxis_format = "%d/%m/%Y"  # Para outras frequências
+
         fig_bottom.update_layout(
             title=f"EARM - {selected_subsystem_bottom} ({frequency_bottom})",
             yaxis_title='MWmês',
             yaxis_tickformat=",.1f",  # Adicionando separador de milhar com ponto
             barmode='stack',
-            xaxis=dict(tickformat="%d/%m/%Y"),  
+            xaxis=dict(tickformat=xaxis_format),  
             legend=dict(x=0.5, y=-0.2, orientation='h', xanchor='center'),
             showlegend= False
         )
