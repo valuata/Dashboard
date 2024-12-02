@@ -571,7 +571,8 @@ fig_area_hist.add_trace(go.Scatter(
     mode='lines',
     name='Máximo',
     showlegend=False,
-    line=dict(width=0)
+    line=dict(width=0),
+    hovertemplate="Máximo: %{y}<extra></extra>"  # Custom hover for max
 ))
 
 fig_area_hist.add_trace(go.Scatter(
@@ -582,7 +583,8 @@ fig_area_hist.add_trace(go.Scatter(
     mode='lines',
     name='Mínimo',
     showlegend=False,
-    line=dict(width=0)
+    line=dict(width=0),
+    hovertemplate="Mínimo: %{y}<extra></extra>"  # Custom hover for min
 ))
 
 # Linha tracejada para a média da ENA Bruta
@@ -596,7 +598,8 @@ fig_area_hist.add_trace(go.Scatter(
     y=mean_ena_data_hist['ena_bruta_regiao_mwmed'],
     mode='lines',
     name='Média ENA Bruta',
-    line=dict(dash='dash', color='#323e47')  # Linha tracejada em azul
+    line=dict(dash='dash', color='#323e47'),  # Linha tracejada em azul
+    hovertemplate="Média ENA Bruta: %{y}<extra></extra>"  # Custom hover for "Média ENA Bruta"
 ))
 
 # 2. Filtra para o subsistema selecionado
@@ -634,7 +637,7 @@ if frequency_hist == 'Mensal':
 
     # Para cada data, associamos o valor médio de acordo com o mês
     for date in last_of_month_dates:
-        month_index = date.month - 1  # Mês começa em 1, então ajustamos para o índice (0 a 11)
+        month_index = date.month -12  # Mês começa em 1, então ajustamos para o índice (0 a 11)
         repeated_values.append(monthly_values[month_index])
 
     # Adicionar a linha de médias mensais (linha pontilhada sem marcadores)
@@ -643,7 +646,8 @@ if frequency_hist == 'Mensal':
         y=repeated_values,  # Usar os valores médios dos últimos dias
         mode='lines',  # Apenas a linha, sem marcadores
         name='Média Mensal ENA',
-        line=dict(color='#67aeaa', dash='solid')  # Linha contínua (não pontilhada)
+        line=dict(color='#67aeaa', dash='solid'),  # Linha contínua (não pontilhada)
+        hovertemplate="Média Mensal ENA: %{y}<extra></extra>"  # Custom hover for monthly average
     ))
 
 else:
@@ -667,21 +671,25 @@ else:
         y=repeated_values_hist,  # Usar os valores repetidos para cada data
         mode='lines',  # Apenas a linha, sem marcadores
         name='Média Mensal ENA',
-        line=dict(color='#67aeaa', dash='solid')  # Linha vermelha pontilhada
+        line=dict(color='#67aeaa', dash='solid'),  # Linha vermelha pontilhada
+        hovertemplate="Média Mensal ENA: %{y}<extra></extra>"  # Custom hover for monthly average
     ))
 
 # Atualizar o layout do gráfico de área
 fig_area_hist.update_layout(
     title=f"Histórico de {selected_subsystem_max_min}",
     yaxis_title=f"{ena_type} (mwmed)",
-    xaxis=dict(tickformat="%d/%m/%Y"),
+    xaxis=dict(
+        tickformat="%d/%m/%Y" if frequency_hist in ['Diário', 'Semanal'] else "%m/%Y"  # Condicional para o formato
+    ),
     legend=dict(
         x=0.5, y=-0.2, orientation='h', xanchor='center',
         traceorder='normal',  
         itemclick="toggleothers",  
         tracegroupgap=0 
     ),
-    yaxis_tickformat=',.0f'  # Formatação para separador de milhar e 1 casa decimal
+    yaxis_tickformat=',.0f',
+    hovermode="x unified"  # Formatação para separador de milhar e 1 casa decimal
 )
 
 # Exibir o gráfico
