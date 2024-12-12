@@ -3,6 +3,9 @@ import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime
 from github import Github
+from babel import Locale
+from babel.numbers import format_decimal, format_currency
+from babel.dates import format_date
 
 st.set_page_config(page_title="ENA", layout="wide")
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
@@ -85,6 +88,17 @@ def calculate_avg_ena_bruta(data, period):
         data['month'] = data['ena_data'].dt.to_period('M').dt.end_time
         return data.groupby('month')['ena_bruta_regiao_mwmed'].mean().reset_index()
     
+def format_week_date(date):
+    # Calcula o número da semana dentro do mês
+    week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
+    return f"S{week_number}/{format_date(date, format='MMM/yyyy', locale='pt_BR').upper()}"
+
+def format_month_date(date):
+    return format_date(date, format='MMM/yyyy', locale='pt_BR').upper()
+
+def format_daily_date(date):
+    return date.strftime('%d/%m/%Y')
+
 
 def ler_data_arquivo():
     try:
@@ -97,6 +111,7 @@ def ler_data_arquivo():
 data_atual = datetime.today()
 arquivo_data = 'data_atual_earm.txt'
 data_arquivo = ler_data_arquivo()
+locale = Locale('pt', 'BR')
 
 if (data_atual > data_arquivo and data_atual.hour >= 2):
     def authenticate_github(token):
@@ -120,9 +135,6 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
         with open(arquivo_data, 'r') as file:
             file_content = file.read()
         push_to_github(repo_name, "data_atual_ena.txt", "Update Data", file_content, token)
-
-    # Título da página
-    st.title("ENA - Energia Natural Afluente")
 
     with open("token1.txt", 'r') as file:
             token1 = file.read()
@@ -359,13 +371,12 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
     
     file_content = ena_data.to_csv(index=False)
     push_to_github(repo_name, file_name, commit_message, file_content, token)
-
 ena_data = pd.read_csv("Ena_atualizado.csv")
 
 # Carregar os dados
 coltitle, coldownload= st.columns([5, 1])
 with coltitle:
-    st.title("ENA - Energia Armazenada Afluente")
+    st.title("ENA - Energia Natural Afluente")
 
 with coldownload:
     csv = ena_data.to_csv(index=False)
@@ -415,7 +426,7 @@ with col2:
     selected_subsystems = st.multiselect(
         "Subsistemas",
         options=['SE/CO', 'S', 'NE', 'N'],
-        default=['SE/CO', 'S', 'NE', 'N']  # Seleção padrão
+        default=['SE/CO', 'S', 'NE', 'N'], placeholder= 'Escolha uma opção'  # Seleção padrão
     )
 with col3:
     start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date, format="DD/MM/YYYY")
@@ -456,16 +467,22 @@ if not agg_data.empty:
             # Loop para cada linha (data) do subsistema
             for _, row in subsystem_data.iterrows():
                 # Soma de todas as barras para a data
-                soma_value = sum([agg_data[agg_data['id_subsistema'] == sub].loc[agg_data['ena_data'] == row['ena_data'], metric_column].values[0] for sub in selected_subsystems])
+                soma_value = format_decimal(sum([agg_data[agg_data['id_subsistema'] == sub].loc[agg_data['ena_data'] == row['ena_data'], metric_column].values[0] for sub in selected_subsystems]), locale='pt_BR', format="##,###.0")
 
                 # Adicionando os dados no customdata
                 custom_row = [row['ena_data'], soma_value]
-
+                if frequency == 'Diário':
+                    formatted_date = format_daily_date(row['ena_data'])
+                elif frequency == 'Semanal':
+                    formatted_date = format_week_date(row['ena_data'])
+                elif frequency == 'Mensal':
+                    formatted_date = format_month_date(row['ena_data'])
+                custom_row.append(formatted_date)
                 # Adicionando valores dos outros subsistemas (caso estejam selecionados)
                 for other_subsystem in ordered_subsystems:
                     if other_subsystem in selected_subsystems:
                         other_value = agg_data[agg_data['id_subsistema'] == other_subsystem].loc[agg_data['ena_data'] == row['ena_data'], metric_column].values
-                        custom_row.append(other_value[0] if len(other_value) > 0 else None)
+                        custom_row.append(format_decimal(other_value[0] if len(other_value) > 0 else None, locale='pt_BR', format="##,###.0"))
                     else:
                         custom_row.append(None)
 
@@ -477,12 +494,12 @@ if not agg_data.empty:
                 y=subsystem_data[metric_column],
                 name=f"{subsystem}",
                 hovertemplate=( 
-                    'Data: %{x}<br>' + 
-                    'Soma Total: %{customdata[1]:,.1f}<br>' +
-                    ('<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[2]:,.1f}<br>' if 'SE/CO' in selected_subsystems else '') +
-                    ('<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[3]:,.1f}<br>' if 'S' in selected_subsystems else '') +
-                    ('<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[4]:,.1f}<br>' if 'NE' in selected_subsystems else '') +
-                    ('<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[5]:,.1f}<br>' if 'N' in selected_subsystems else '') +
+                    'Data: %{customdata[2]: %MMM/%yyyy}<br>' + 
+                    'Brasil: %{customdata[1]:.,1f}<br>' +
+                    ('<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[3]:.,1f}<br>' if 'SE/CO' in selected_subsystems else '') +
+                    ('<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[4]:.,1f}<br>' if 'S' in selected_subsystems else '') +
+                    ('<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[5]:.,1f}<br>' if 'NE' in selected_subsystems else '') +
+                    ('<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[6]:.,1f}<br>' if 'N' in selected_subsystems else '') +
                     '<extra></extra>'
                 ),
                 marker_color=colors_dict[subsystem],
@@ -491,18 +508,82 @@ if not agg_data.empty:
 
     # Atualizando o layout do gráfico de barras
     fig_bar.update_layout(
-        title=f"ENA - {ena_type} (mwmed) ({frequency})",
-        yaxis_title=f"{ena_type} (mwmed)",
-        barmode='stack', 
-        xaxis=dict(tickformat="%d/%m/%Y"),  
+        title=f"ENA - {ena_type} (MWmed) ({frequency})",
+        yaxis_title=f"{ena_type} (MWmed)",
+        barmode='stack',   
         legend=dict(
             x=0.5, y=-0.2, orientation='h', xanchor='center',
             traceorder='normal',
             itemclick="toggleothers",  
             tracegroupgap=0
         ),
-        yaxis_tickformat=',.0f'
+        hoverlabel=dict(
+            align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+        ),
+        yaxis_tickformat='.,0f',
+        yaxis_tickmode='array',
+        yaxis_nticks=5
     )
+    if frequency == 'Diário':
+        num_ticks = 5  # Quantidade de ticks desejados
+
+        # Selecione as datas para exibir no eixo X com base no número de ticks
+        tick_dates = pd.date_range(
+            start=agg_data['ena_data'].min(), 
+            end=agg_data['ena_data'].max(), 
+            freq=f'{int((agg_data["ena_data"].max() - agg_data["ena_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+        )
+
+        # Formatar as datas para o formato desejado
+        formatted_ticks = [format_daily_date(date) for date in tick_dates]
+
+        # Atualizar o eixo X para usar essas datas formatadas
+        fig_bar.update_xaxes(
+            tickmode='array',
+            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+            ticktext=formatted_ticks,  # Usar as datas formatadas
+            tickangle=0
+        )
+    elif frequency == 'Semanal':
+        num_ticks = 5  # Quantidade de ticks desejados
+
+        # Selecione as datas para exibir no eixo X com base no número de ticks
+        tick_dates = pd.date_range(
+            start=agg_data['ena_data'].min(), 
+            end=agg_data['ena_data'].max(), 
+            freq=f'{int((agg_data["ena_data"].max() - agg_data["ena_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+        )
+
+        # Formatar as datas para o formato desejado
+        formatted_ticks = [format_week_date(date) for date in tick_dates]
+
+        # Atualizar o eixo X para usar essas datas formatadas
+        fig_bar.update_xaxes(
+            tickmode='array',
+            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+            ticktext=formatted_ticks,  # Usar as datas formatadas
+            tickangle=0
+        )
+    else:
+        num_ticks = 5  # Quantidade de ticks desejados
+
+        # Selecione as datas para exibir no eixo X com base no número de ticks
+        tick_dates = pd.date_range(
+            start=agg_data['ena_data'].min(), 
+            end=agg_data['ena_data'].max(), 
+            freq=f'{int((agg_data["ena_data"].max() - agg_data["ena_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+        )
+
+        # Formatar as datas para o formato desejado
+        formatted_ticks = [format_month_date(date) for date in tick_dates]
+
+        # Atualizar o eixo X para usar essas datas formatadas
+        fig_bar.update_xaxes(
+            tickmode='array',
+            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+            ticktext=formatted_ticks,  # Usar as datas formatadas
+            tickangle=0
+        )
 
     # Exibir gráfico de barras
     st.plotly_chart(fig_bar)
@@ -564,43 +645,76 @@ mean_ena_data_hist = calculate_avg_ena_bruta(subsystem_data_hist, frequency_hist
 fig_area_hist = go.Figure()
 
 # Preencher a área entre 'max' e 'min'
-fig_area_hist.add_trace(go.Scatter(
-    x=agg_subsystem_data_hist['ena_data'],
-    y=agg_subsystem_data_hist['max'],
-    fill=None,
-    mode='lines',
-    name='Máximo',
-    showlegend=False,
-    line=dict(width=0),
-    hovertemplate="Máximo: %{y}<extra></extra>"  # Custom hover for max
-))
-
-fig_area_hist.add_trace(go.Scatter(
-    x=agg_subsystem_data_hist['ena_data'],
-    y=agg_subsystem_data_hist['min'],
-    fill='tonexty',  # Preenche a área abaixo da linha 'min'
-    fillcolor='#646971',  # Cor cinza claro para a área
-    mode='lines',
-    name='Mínimo',
-    showlegend=False,
-    line=dict(width=0),
-    hovertemplate="Mínimo: %{y}<extra></extra>"  # Custom hover for min
-))
+if frequency_hist == 'Mensal':
+    fig_area_hist.add_trace(go.Scatter(
+        x=(agg_subsystem_data_hist['ena_data']- pd.DateOffset(months=1))+ pd.offsets.MonthEnd(0),
+        y=agg_subsystem_data_hist['max'],
+        fill=None,
+        mode='lines',
+        name='Máximo',
+        showlegend=False,
+        line=dict(width=0),
+        hovertemplate="Máximo: %{y}<extra></extra>"  # Custom hover for max
+    ))
+    
+    fig_area_hist.add_trace(go.Scatter(
+        x=(agg_subsystem_data_hist['ena_data']- pd.DateOffset(months=1))+ pd.offsets.MonthEnd(0),
+        y=agg_subsystem_data_hist['min'],
+        fill='tonexty',  # Preenche a área abaixo da linha 'min'
+        fillcolor='#e3e3e3',  # Cor cinza claro para a área
+        mode='lines',
+        name='Mínimo',
+        showlegend=False,
+        line=dict(width=0),
+        hovertemplate="Mínimo: %{y}<extra></extra>"  # Custom hover for min
+    ))
+else:
+    fig_area_hist.add_trace(go.Scatter(
+        x=(agg_subsystem_data_hist['ena_data']- pd.DateOffset(months=1)),
+        y=agg_subsystem_data_hist['max'],
+        fill=None,
+        mode='lines',
+        name='Máximo',
+        showlegend=False,
+        line=dict(width=0),
+        hovertemplate="Máximo: %{y}<extra></extra>"  # Custom hover for max
+    ))
+    
+    fig_area_hist.add_trace(go.Scatter(
+        x=(agg_subsystem_data_hist['ena_data']- pd.DateOffset(months=1)),
+        y=agg_subsystem_data_hist['min'],
+        fill='tonexty',  # Preenche a área abaixo da linha 'min'
+        fillcolor='#e3e3e3',  # Cor cinza claro para a área
+        mode='lines',
+        name='Mínimo',
+        showlegend=False,
+        line=dict(width=0),
+        hovertemplate="Mínimo: %{y}<extra></extra>"  # Custom hover for min
+    ))
 
 # Linha tracejada para a média da ENA Bruta
 if frequency_hist == 'Semanal':
     mean_ena_data_hist['ena_data'] = mean_ena_data_hist['week']  # Ajusta a coluna de data para 'week' se for semanal
 elif frequency_hist == 'Mensal':
     mean_ena_data_hist['ena_data'] = mean_ena_data_hist['month']  # Ajusta a coluna de data para 'month' se for mensal
-
-fig_area_hist.add_trace(go.Scatter(
-    x=mean_ena_data_hist['ena_data'],
-    y=mean_ena_data_hist['ena_bruta_regiao_mwmed'],
-    mode='lines',
-    name='Média ENA Bruta',
-    line=dict(dash='dash', color='#323e47'),  # Linha tracejada em azul
-    hovertemplate="Média ENA Bruta: %{y}<extra></extra>"  # Custom hover for "Média ENA Bruta"
-))
+if frequency_hist == 'Mensal':
+    fig_area_hist.add_trace(go.Scatter(
+        x=(mean_ena_data_hist['ena_data']- pd.DateOffset(months=1))+ pd.offsets.MonthEnd(0),
+        y=mean_ena_data_hist['ena_bruta_regiao_mwmed'],
+        mode='lines',
+        name='Realizado',
+        line=dict(dash='solid', color='#323e47'),  # Linha tracejada em azul
+        hovertemplate="Realizado: %{y}<extra></extra>"  # Custom hover for "Média ENA Bruta"
+    ))
+else:
+    fig_area_hist.add_trace(go.Scatter(
+        x=(mean_ena_data_hist['ena_data']- pd.DateOffset(months=1)),
+        y=mean_ena_data_hist['ena_bruta_regiao_mwmed'],
+        mode='lines',
+        name='Realizado',
+        line=dict(dash='solid', color='#323e47'),  # Linha tracejada em azul
+        hovertemplate="Realizado: %{y}<extra></extra>"  # Custom hover for "Média ENA Bruta"
+    ))
 
 # 2. Filtra para o subsistema selecionado
 media_row = monthly_data[monthly_data['Ano'] == 'media']
@@ -626,28 +740,31 @@ if frequency_hist == 'Mensal':
     # Encontrar as últimas datas de cada mês no intervalo de tempo filtrado
     last_of_month_dates = []
     for date in filtered_dates_hist['ena_data']:
-        # Adiciona o último dia de cada mês para a data filtrada
-        last_of_month_dates.append(pd.to_datetime(f'{date.year}-{date.month:02d}-{date.days_in_month}'))
-
-    # Garantir que estamos pegando as últimas datas de cada mês único
-    last_of_month_dates = pd.to_datetime([f'{date.year}-{date.month:02d}-{date.days_in_month}' for date in filtered_dates_hist['ena_data'].unique()])
-
+        # Adiciona o primeiro dia de cada mês para a data filtrada (alteração para o primeiro dia)
+        first_of_month_date = pd.to_datetime(f'{date.year}-{date.month:02d}-01')
+        last_of_month_dates.append(first_of_month_date)
+    
+    # Garantir que estamos pegando as primeiras datas de cada mês único
+    first_of_month_dates = pd.to_datetime([f'{date.year}-{date.month:02d}-01' for date in filtered_dates_hist['ena_data'].unique()])
+    
     # Repetir os valores médios para cada mês no intervalo de tempo filtrado
     repeated_values = []
-
+    
     # Para cada data, associamos o valor médio de acordo com o mês
-    for date in last_of_month_dates:
-        month_index = date.month -12  # Mês começa em 1, então ajustamos para o índice (0 a 11)
+    for date in first_of_month_dates:
+        month_index = date.month - 1  # Mês começa em 1, então ajustamos para o índice (0 a 11)
         repeated_values.append(monthly_values[month_index])
-
+    
     # Adicionar a linha de médias mensais (linha pontilhada sem marcadores)
     fig_area_hist.add_trace(go.Scatter(
-        x=last_of_month_dates,  # Usar apenas os últimos dias de cada mês
-        y=repeated_values,  # Usar os valores médios dos últimos dias
+        x=first_of_month_dates,  # Usar apenas os primeiros dias de cada mês
+        y=repeated_values,  # Usar os valores médios dos primeiros dias
         mode='lines',  # Apenas a linha, sem marcadores
-        name='Média Mensal ENA',
-        line=dict(color='#67aeaa', dash='solid'),  # Linha contínua (não pontilhada)
-        hovertemplate="Média Mensal ENA: %{y}<extra></extra>"  # Custom hover for monthly average
+        name='MLT',
+        xperiod="M1",
+        xperiodalignment="start",
+        line=dict(color='#67aeaa', dash='dash'),  # Linha contínua (não pontilhada)
+        hovertemplate="MLT: %{y}<extra></extra>"  # Custom hover for monthly average
     ))
 
 else:
@@ -670,27 +787,84 @@ else:
         x=filtered_dates_hist['ena_data'],  # Usar as datas filtradas
         y=repeated_values_hist,  # Usar os valores repetidos para cada data
         mode='lines',  # Apenas a linha, sem marcadores
-        name='Média Mensal ENA',
-        line=dict(color='#67aeaa', dash='solid'),  # Linha vermelha pontilhada
-        hovertemplate="Média Mensal ENA: %{y}<extra></extra>"  # Custom hover for monthly average
+        name='MLT',
+        line=dict(color='#67aeaa', dash='dash'),  # Linha vermelha pontilhada
+        hovertemplate="MLT: %{y:.,1}<extra></extra>"  # Custom hover for monthly average
     ))
-
+max_value = agg_subsystem_data_hist['max'].max()
 # Atualizar o layout do gráfico de área
 fig_area_hist.update_layout(
     title=f"Histórico de {selected_subsystem_max_min}",
-    yaxis_title=f"{ena_type} (mwmed)",
-    xaxis=dict(
-        tickformat="%d/%m/%Y" if frequency_hist in ['Diário', 'Semanal'] else "%m/%Y"  # Condicional para o formato
-    ),
+    yaxis_title=f"{ena_type} (MWmed)",
     legend=dict(
         x=0.5, y=-0.2, orientation='h', xanchor='center',
         traceorder='normal',  
         itemclick="toggleothers",  
         tracegroupgap=0 
     ),
+    yaxis=dict(
+                autorange=False,   # Permite que o valor máximo do eixo Y seja ajustado automaticamente
+                range=[0, max_value+30]   # Força o valor mínimo do eixo Y a começar em 0
+            ),
     yaxis_tickformat=',.0f',
-    hovermode="x unified"  # Formatação para separador de milhar e 1 casa decimal
+    hovermode="x unified" # Formatação para separador de milhar e 1 casa decimal
 )
+first_date = agg_subsystem_data_hist["ena_data"].min()
+last_date = agg_subsystem_data_hist["ena_data"].max()
+if frequency_hist == 'Diário':
+    num_ticks = 5  # Quantidade de ticks desejados
+    # Selecione as datas para exibir no eixo X com base no número de ticks
+    tick_dates = pd.date_range(
+        start=agg_subsystem_data_hist['ena_data'].min(), 
+        end=agg_subsystem_data_hist['ena_data'].max(), 
+        freq=f'{int((agg_subsystem_data_hist["ena_data"].max() - agg_subsystem_data_hist["ena_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+    )
+    # Formatar as datas para o formato desejado
+    tick_dates = [first_date] + list(tick_dates) + [last_date]
+    formatted_ticks = [format_daily_date(date) for date in tick_dates]
+    # Atualizar o eixo X para usar essas datas formatadas
+    fig_area_hist.update_xaxes(
+        tickmode='array',
+        tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+        ticktext=formatted_ticks,  # Usar as datas formatadas
+        tickangle=0
+    )
+elif frequency_hist == 'Semanal':
+    num_ticks = 5  # Quantidade de ticks desejados
+    # Selecione as datas para exibir no eixo X com base no número de ticks
+    tick_dates = pd.date_range(
+        start=agg_subsystem_data_hist['ena_data'].min(), 
+        end=agg_subsystem_data_hist['ena_data'].max(), 
+        freq=f'{int((agg_subsystem_data_hist["ena_data"].max() - agg_subsystem_data_hist["ena_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+    )
+    # Formatar as datas para o formato desejado
+    tick_dates = [first_date] + list(tick_dates) + [last_date]
+    formatted_ticks = [format_week_date(date) for date in tick_dates]
+    # Atualizar o eixo X para usar essas datas formatadas
+    fig_area_hist.update_xaxes(
+        tickmode='array',
+        tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+        ticktext=formatted_ticks,  # Usar as datas formatadas
+        tickangle=0
+    )
+else:
+    num_ticks = 5  # Quantidade de ticks desejados
+    # Selecione as datas para exibir no eixo X com base no número de ticks
+    tick_dates = pd.date_range(
+        start=agg_subsystem_data_hist['ena_data'].min(), 
+        end=agg_subsystem_data_hist['ena_data'].max(), 
+        freq=f'{int((agg_subsystem_data_hist["ena_data"].max() - agg_subsystem_data_hist["ena_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+    )
+    # Formatar as datas para o formato desejado
+    tick_dates = [first_date] + list(tick_dates) + [last_date]
+    formatted_ticks = [format_month_date(date) for date in tick_dates]
+    # Atualizar o eixo X para usar essas datas formatadas
+    fig_area_hist.update_xaxes(
+        tickmode='array',
+        tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+        ticktext=formatted_ticks,  # Usar as datas formatadas
+        tickangle=0
+    )
 
 # Exibir o gráfico
 st.plotly_chart(fig_area_hist)
