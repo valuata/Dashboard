@@ -3,6 +3,10 @@ import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
 from github import Github
+from babel import Locale
+from babel.numbers import format_decimal, format_currency
+from babel.dates import format_date
+
 
 st.set_page_config(page_title="Carga", layout="wide")
 import streamlit as st
@@ -36,7 +40,7 @@ st.markdown("""
         }
         [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
-        footer {visivility: hidden;}
+        footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -59,7 +63,11 @@ def aggregate_data(data, frequency):
 def format_week_date(date):
     # Calcula o número da semana dentro do mês
     week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
-    return f"S{week_number} {date.strftime('%m/%Y')}"
+    return f"S{week_number}/{format_date(date, format='MMM/yyyy', locale='pt_BR').upper()}"
+def format_month_date(date):
+    return format_date(date, format='MMM/yyyy', locale='pt_BR').upper()
+def format_daily_date(date):
+    return date.strftime('%d/%m/%Y')
 
 def ler_data_arquivo():
     try:
@@ -70,8 +78,9 @@ def ler_data_arquivo():
         return None
 
 data_atual = datetime.today()
-arquivo_data = 'data_atual_earm.txt'
+arquivo_data = 'data_atual.txt'
 data_arquivo = ler_data_arquivo()
+locale = Locale('pt', 'BR')
 
 if (data_atual > data_arquivo and data_atual.hour >= 2):
     def authenticate_github(token):
@@ -177,7 +186,7 @@ with col2:
     selected_subsystems = st.multiselect(
         "Selecione os subsistemas",
         options=['SE/CO', 'S', 'NE', 'N'],
-        default=['SE/CO', 'S', 'NE', 'N']  # Seleção padrão
+        default=['SE/CO', 'S', 'NE', 'N'], placeholder= 'Escolha uma opção'  # Seleção padrão
     )
 with col3:
     start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
@@ -229,15 +238,23 @@ if not agg_data.empty:
                     ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
                     n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['din_instante'] == row['din_instante'])]['val_cargaenergiamwmed'].values
                     # Calcular a soma para aquela data
+                    if frequency == 'Diário':
+                        formatted_date = format_daily_date(row['din_instante'])
+                    elif frequency == 'Semanal':
+                        formatted_date = format_week_date(row['din_instante'])
+                    elif frequency == 'Mensal':
+                        formatted_date = format_month_date(row['din_instante'])
                     sum_val = (se_val[0] if len(se_val) > 0 else 0) + \
                             (s_val[0] if len(s_val) > 0 else 0) + \
                             (ne_val[0] if len(ne_val) > 0 else 0) + \
                             (n_val[0] if len(n_val) > 0 else 0)
-                    custom_data.append([se_val[0] if len(se_val) > 0 else 0,
-                                        s_val[0] if len(s_val) > 0 else 0,
-                                        ne_val[0] if len(ne_val) > 0 else 0,
-                                        n_val[0] if len(n_val) > 0 else 0,
-                                        sum_val])
+                    custom_data.append([formatted_date,
+                        format_decimal(se_val[0] if len(se_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
+                        format_decimal(s_val[0] if len(s_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
+                        format_decimal(ne_val[0] if len(ne_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
+                        format_decimal(n_val[0] if len(n_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
+                        format_decimal(sum_val, locale='pt_BR', format="#,##0.0")
+                    ])
 
                 # Cor específica para o subsistema
                 color = colors_dict.get(subsystem, '#000000')  # Caso não encontre, define preto
@@ -248,13 +265,13 @@ if not agg_data.empty:
                     y=subsystem_data['val_cargaenergiamwmed'],
                     name=subsystem,
                     marker_color=color,  # Atribuindo a cor específica
-                    hovertemplate=(  
-                        'Data: %{x}<br>' +
-                        'Brasil: %{customdata[4]:,.1f}<br>' +
-                        '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[0]:,.1f}<br>' +  # Cor de SE/CO
-                        '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[1]:,.1f}<br>' +  # Cor de S
-                        '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[2]:,.1f}<br>' +  # Cor de NE
-                        '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[3]:,.1f}<br>' +  # Cor de N
+                    hovertemplate=(
+                        'Data: %{customdata[0]}<br>' +
+                        'Brasil: %{customdata[5]}<br>' +
+                        '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[1]}<br>' +  
+                        '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[2]}<br>' +  
+                        '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[3]}<br>' +  
+                        '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[4]}<br>' +  
                         '<extra></extra>'
                     ),
                     customdata=custom_data,
@@ -283,26 +300,57 @@ if not agg_data.empty:
             dtick="D1", 
             tickformat="%d/%m/%Y", 
             tickmode='auto',  # Deixa o Plotly determinar a frequência do tick
-            tickangle=45  # Rotaciona as labels para melhorar a legibilidade
+            tickangle=0  # Rotaciona as labels para melhorar a legibilidade
         )
     elif frequency == 'Semanal':
+        num_ticks = 5  # Quantidade de ticks desejados
+
+        # Selecione as datas para exibir no eixo X com base no número de ticks
+        tick_dates = pd.date_range(
+            start=agg_data['din_instante'].min(), 
+            end=agg_data['din_instante'].max(), 
+            freq=f'{int((agg_data["din_instante"].max() - agg_data["din_instante"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+        )
+
+        # Formatar as datas para o formato desejado
+        formatted_ticks = [format_week_date(date) for date in tick_dates]
+
+        # Atualizar o eixo X para usar essas datas formatadas
         fig.update_xaxes(
-            tickmode='array',  # Define os ticks manualmente
-            tickvals=agg_data['din_instante'],  # Usar as datas originais para as posições dos ticks
-            ticktext=agg_data['week_label'],  # Usar as labels de semana (ex: S1 Jan 2024)
-            nticks=5  # Definir o número máximo de ticks visíveis no eixo X
+            tickmode='array',
+            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+            ticktext=formatted_ticks,  # Usar as datas formatadas
+            tickangle=0
         )
     else:
+        num_ticks = 5  # Quantidade de ticks desejados
+
+        # Selecione as datas para exibir no eixo X com base no número de ticks
+        tick_dates = pd.date_range(
+            start=agg_data['din_instante'].min(), 
+            end=agg_data['din_instante'].max(), 
+            freq=f'{int((agg_data["din_instante"].max() - agg_data["din_instante"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+        )
+
+        # Formatar as datas para o formato desejado
+        formatted_ticks = [format_month_date(date) for date in tick_dates]
+
+        # Atualizar o eixo X para usar essas datas formatadas
         fig.update_xaxes(
-            dtick="M1", 
-            tickformat="%m/%Y",
-            tickmode='auto',  # Deixa o Plotly determinar a frequência do tick
-            tickangle=45  # Rotaciona as labels para melhorar a legibilidade
+            tickmode='array',
+            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+            ticktext=formatted_ticks,  # Usar as datas formatadas
+            tickangle=0
         )
 
     # Atualizar o eixo Y para mostrar valores com uma casa decimal e separadores de milhar
     fig.update_layout(
-        yaxis_tickformat=',.0f'  # Formatação para separador de milhar e 1 casa decimal
+        hoverlabel=dict(
+            align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+        ),
+        yaxis_tickformat='.,0f',
+        yaxis_tickmode='array',
+        yaxis_nticks=5
     )
 
     # Exibir o gráfico
