@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
+from babel import Locale
+from babel.numbers import format_decimal, format_currency
+from babel.dates import format_date
 
 st.set_page_config(page_title="PLD", layout="wide")
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
@@ -33,9 +36,22 @@ st.markdown("""
         footer {visivility: hidden;}
     </style>
 """, unsafe_allow_html=True)
+locale = Locale('pt', 'BR')
 
 # Set page config
+def format_week_date(date):
+    # Calcula o número da semana dentro do mês
+    week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
+    return f"S{week_number}/{format_date(date, format='MMM/yyyy', locale='pt_BR').upper()}"
 
+def format_month_date(date):
+    return format_date(date, format='MMM/yyyy', locale='pt_BR').upper()
+
+def format_daily_date(date):
+    return date.strftime('%d/%m/%Y')
+
+def format_hour_date(date):
+    return date.strftime('%d/%m/%Y : %H:00h')
 # Load the data
 pld_data = pd.read_csv("PLD Horário Comercial Historico.csv")
 
@@ -98,7 +114,7 @@ col3, col4, col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
     period = st.radio("Frequência", ('Horário', 'Diário', 'Semanal', 'Mensal'), index=3)  # Default to 'Mensal'
 with col2:
-    selected_submarkets = st.multiselect("Selecione os Submercados", submarket_options, default=submarket_options)
+    selected_submarkets = st.multiselect("Selecione os Submercados", submarket_options, default=submarket_options, placeholder= 'Escolha uma opção')
 with col3:
     start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
 with col4:
@@ -141,89 +157,180 @@ aggregated_avg_values = aggregate_data_for_avg_values(filtered_data, frequency=p
 
 # Filtrar dados para os submercados selecionados
 filtered_avg_values = aggregated_avg_values[aggregated_avg_values['Submercado'].isin(selected_submarkets)]
-
+if not selected_submarkets:
+    st.write("Por favor, selecione pelo menos um submercado para exibir o gráfico.")
 # Create the average line graph for each selected submarket
-avg_values_per_submarket_graph = go.Figure()
-
-def grafico1(variavel):
-    for submarket, color in zip(reversed(submarket_order), reversed(colors)):  # Ordem de sobreposição invertida (de baixo para cima)
-        if submarket in selected_submarkets:
-            submarket_data = filtered_avg_values[filtered_avg_values['Submercado'] == submarket]
-            
-            # Criação de um dicionário para armazenar os valores dos submercados por data
-            values = []
-            for date in submarket_data[variavel]:
-                sub_values = []
-                for sm in submarket_order:
-                    # Se o submercado está na seleção, adicionar o valor do submercado à lista
-                    if sm in selected_submarkets:
-                        sm_data = filtered_avg_values[(filtered_avg_values['Submercado'] == sm) & (filtered_avg_values[variavel] == date)]
-                        # Asegurando que o valor existe (não vazio) para o submercado
-                        sm_value = sm_data['Valor'].values[0] if len(sm_data) > 0 else None
-                        sub_values.append(sm_value)
-                    else:
-                        sub_values.append(None)
-                values.append(sub_values)  # Adiciona os valores dos submercados para essa data
-            
-            # Substituindo valores NaN por 'NaN' em customdata
-            values_with_nan = [
-                [
-                    'NaN' if pd.isna(value) else value for value in submarket_values
+else: 
+    avg_values_per_submarket_graph = go.Figure()
+    
+    def grafico1(variavel):
+        for submarket, color in zip(reversed(submarket_order), reversed(colors)):  # Ordem de sobreposição invertida (de baixo para cima)
+            if submarket in selected_submarkets:
+                submarket_data = filtered_avg_values[filtered_avg_values['Submercado'] == submarket]
+                
+                # Criação de um dicionário para armazenar os valores dos submercados por data
+                values = []
+                formatted_dates = []
+                for date in submarket_data[variavel]:
+                    sub_values = []
+                    for sm in submarket_order:
+                        # Se o submercado está na seleção, adicionar o valor do submercado à lista
+                        if sm in selected_submarkets:
+                            sm_data = filtered_avg_values[(filtered_avg_values['Submercado'] == sm) & (filtered_avg_values[variavel] == date)]
+                            # Asegurando que o valor existe (não vazio) para o submercado
+                            sm_value = format_decimal(sm_data['Valor'].values[0] if len(sm_data) > 0 else None, locale='pt_BR', format="#,##0.0")
+                            sub_values.append(sm_value)
+                        else:
+                            sub_values.append(None)
+    
+                    if period == 'Diário':
+                        formatted_dates.append(format_daily_date(date))
+                    elif period == 'Semanal':
+                        formatted_dates.append(format_week_date(date))
+                    elif period == 'Horário':
+                        formatted_dates.append(format_hour_date(date))
+                    elif period == 'Mensal':
+                        formatted_dates.append(format_month_date(date))
+                    values.append(sub_values)  # Adiciona os valores dos submercados para essa data
+                # Substituindo valores NaN por 'NaN' em customdata
+                values_with_nan = [
+                    [
+                        'NaN' if pd.isna(value) else value for value in submarket_values
+                    ]
+                    
+                    for submarket_values in values
                 ]
-                for submarket_values in values
-            ]
-
-            # Adicionando o gráfico com hovertemplate modificado
-            avg_values_per_submarket_graph.add_trace(go.Scatter(
-                x=submarket_data[variavel],
-                y=submarket_data['Valor'],
-                mode='lines',
-                name=submarket,
-                line=dict(color=color),  # Cor personalizada para cada submercado
-                hovertemplate=( 
-                    "Data: %{x|%d/%m/%Y %H:%M}<br>"  # Formato da data
-                    "SE/CO: %{customdata[0]:,.1f}<br>"  # Valor para SE/CO
-                    "S: %{customdata[1]:,.1f}<br>"  # Valor para S
-                    "NE: %{customdata[2]:,.1f}<br>"  # Valor para NE
-                    "N: %{customdata[3]:,.1f}<br>"  # Valor para N
-                    "<extra></extra>"  # Remove o texto extra padrão (ex: 'trace' name)
-                ),
-                customdata=values_with_nan,  # Passar os valores com 'NaN' em vez de valores ausentes
-            ))
-
-    # Determinando o formato do eixo X com base no valor de 'period'
-    if period == "Horário":
-        xaxis_format = "%d/%m/%Y %H:%M"  # Dia/Mês/Ano Hora:Minuto
-    elif period == "Mensal":
-        xaxis_format = "%m/%Y"  # Mês/Ano
-    else:
-        xaxis_format = "%d/%m/%Y"  # Dia/Mês/Ano
-
-    # Atualizando a legenda e outros parâmetros do gráfico
-    avg_values_per_submarket_graph.update_layout(
-        title=f'Preço médio por submercado ({period})',
-        yaxis_title="Preço (R$/MWh)",
-        xaxis=dict(tickformat=xaxis_format),  # Usando o formato de eixo x definido acima
-        legend=dict(
-            orientation="h",  # Legenda horizontal
-            yanchor="bottom", 
-            y=-0.5,  # Posicionar a legenda abaixo do gráfico
-            xanchor="center", 
-            x=0.5,
-            traceorder='reversed',  # Manter a ordem da legenda conforme a ordem das traces
-            tracegroupgap=5  # Espaçamento entre os grupos de traces
-        ),
-        template='plotly_dark'
-    )
-
-    # Exibir o gráfico de valores médios
-    st.plotly_chart(avg_values_per_submarket_graph)
-
-
-if period == "Horário":
-    grafico1("Datetime")
-else:
-    grafico1("Data")
+                # Adicionando o gráfico com hovertemplate modificado
+                avg_values_per_submarket_graph.add_trace(go.Scatter(
+                    x=submarket_data[variavel],
+                    y=submarket_data['Valor'],
+                    mode='lines',
+                    name=submarket,
+                    line=dict(color=color),  # Cor personalizada para cada submercado
+                    hovertemplate=( 
+                        "Data: %{customdata[1]: %MMM/%yyyy}<br>"  # Formato da data
+                        "SE/CO: %{customdata[0][0]:.,1f}<br>"  # Valor para SE/CO
+                        "S: %{customdata[0][1]:.,1f}<br>"  # Valor para S
+                        "NE: %{customdata[0][2]:.,1f}<br>"  # Valor para NE
+                        "N: %{customdata[0][3]:.,1f}<br>"  # Valor para N
+                        "<extra></extra>"  # Remove o texto extra padrão (ex: 'trace' name)
+                    ),
+                    customdata=list(zip(values_with_nan, formatted_dates)),  # Passar os valores com 'NaN' em vez de valores ausentes
+                ))
+        first_date = filtered_avg_values[variavel].min()
+        last_date = filtered_avg_values[variavel].max()
+        # Determinando o formato do eixo X com base no valor de 'period'
+        if period == 'Diário':
+            num_ticks = 5  # Quantidade de ticks desejados
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=filtered_avg_values[variavel].min(), 
+                end=filtered_avg_values[variavel].max(), 
+                freq=f'{int((filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+            # Formatar as datas para o formato desejado
+            tick_dates = [first_date] + list(tick_dates) + [last_date]
+    
+            formatted_ticks = [format_daily_date(date) for date in tick_dates]
+            # Atualizar o eixo X para usar essas datas formatadas
+            avg_values_per_submarket_graph.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+        elif period == 'Semanal':
+            num_ticks = 5  # Quantidade de ticks desejados
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=filtered_avg_values[variavel].min(), 
+                end=filtered_avg_values[variavel].max(), 
+                freq=f'{int((filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+            # Formatar as datas para o formato desejado
+            tick_dates = [first_date] + list(tick_dates) + [last_date]
+    
+            formatted_ticks = [format_week_date(date) for date in tick_dates]
+            # Atualizar o eixo X para usar essas datas formatadas
+            avg_values_per_submarket_graph.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+        elif period == 'Horário':
+            num_ticks = 5  # Quantidade de ticks desejados
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=filtered_avg_values[variavel].min(), 
+                end=filtered_avg_values[variavel].max(), 
+                freq=f'{int((filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+            # Formatar as datas para o formato desejado
+            tick_dates = [first_date] + list(tick_dates) + [last_date]
+    
+            formatted_ticks = [format_hour_date(date) for date in tick_dates]
+            # Atualizar o eixo X para usar essas datas formatadas
+            avg_values_per_submarket_graph.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+        else:
+            num_ticks = 5  # Quantidade de ticks desejados
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=filtered_avg_values[variavel].min(), 
+                end=filtered_avg_values[variavel].max(), 
+                freq=f'{int((filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+            # Formatar as datas para o formato desejado
+            tick_dates = [first_date] + list(tick_dates) + [last_date]
+    
+            formatted_ticks = [format_month_date(date) for date in tick_dates]
+            # Atualizar o eixo X para usar essas datas formatadas
+            avg_values_per_submarket_graph.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )  # Dia/Mês/Ano
+        max_value = filtered_avg_values['Valor'].max()
+        # Atualizando a legenda e outros parâmetros do gráfico
+        avg_values_per_submarket_graph.update_layout(
+            title=f'Preço médio por submercado ({period})',
+            yaxis_title="Preço (R$/MWh)",
+            yaxis=dict(
+                autorange=False,   # Permite que o valor máximo do eixo Y seja ajustado automaticamente
+                range=[0, max_value+30]   # Força o valor mínimo do eixo Y a começar em 0
+            ),  # Usando o formato de eixo x definido acima
+            legend=dict(
+                orientation="h",  # Legenda horizontal
+                yanchor="bottom", 
+                y=-0.5,  # Posicionar a legenda abaixo do gráfico
+                xanchor="center", 
+                x=0.5,
+                traceorder='reversed',  # Manter a ordem da legenda conforme a ordem das traces
+                tracegroupgap=5  # Espaçamento entre os grupos de traces
+            ),
+            template='plotly_dark',
+            hoverlabel=dict(
+                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+            ),
+            yaxis_tickformat='.,0f',
+            yaxis_tickmode='array',
+            yaxis_nticks=5
+        )
+    
+        # Exibir o gráfico de valores médios
+        st.plotly_chart(avg_values_per_submarket_graph)
+    
+    with st.spinner('Carregando gráfico...'):
+        if period == "Horário":
+            grafico1("Datetime")
+        else:
+            grafico1("Data")
 
 st.write("---")
 
@@ -304,6 +411,7 @@ def aggregate_data_for_candlestick(data, frequency):
             Close=('Valor', 'last'),
             Mean=('Valor', 'mean')  # Média do período
         )
+        
     elif frequency == 'Mensal':  # Mensal
         aggregated_data = data.resample('M', on='Data').agg(
             Open=('Valor', 'first'),
@@ -314,12 +422,20 @@ def aggregate_data_for_candlestick(data, frequency):
         )
     
     # Resetar o índice novamente
+    formatted_data = aggregated_data.copy()
+    formatted_data['Open'] = formatted_data['Open'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
+    formatted_data['High'] = formatted_data['High'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
+    formatted_data['Low'] = formatted_data['Low'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
+    formatted_data['Close'] = formatted_data['Close'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
+    formatted_data['Mean'] = formatted_data['Mean'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
+    # Resetar o índice novamente
     aggregated_data = aggregated_data.reset_index()
-    return aggregated_data
+    formatted_data = formatted_data.reset_index()
 
+    return aggregated_data, formatted_data
 
 # Obter os dados agregados para o gráfico de candlestick
-agg_data = aggregate_data_for_candlestick(filtered_data_bottom, frequency=frequency_bottom)
+agg_data, formatted_data = aggregate_data_for_candlestick(filtered_data_bottom, frequency=frequency_bottom)
 
 # Definir as cores para os candles de alta/baixa
 increasing_color = '#68aeaa'  # Cor para candles de alta (verde)
@@ -330,6 +446,15 @@ whisker_line_color = '#323e47'
 
 # Verificar se os dados não estão vazios
 if not agg_data.empty:
+    # Lista para armazenar as datas formatadas
+    formatted_dates = []
+    
+    # Formatar as datas de acordo com o período (Semanal ou Mensal)
+    if frequency_bottom == 'Semanal':
+        formatted_dates = [format_week_date(date) for date in agg_data['Data']]
+    elif frequency_bottom == 'Mensal':
+        formatted_dates = [format_month_date(date) for date in agg_data['Data']]
+
     # Criar o gráfico de candlestick
     fig = go.Figure(data=[go.Candlestick(
         x=agg_data['Data'],
@@ -340,14 +465,14 @@ if not agg_data.empty:
         name=f'Candlestick - {selected_subsystem_bottom}',
         increasing=dict(line=dict(color=increasing_color), fillcolor=increasing_color),  # Customize increasing candle
         decreasing=dict(line=dict(color=decreasing_color), fillcolor=decreasing_color),  # Exibir a legenda
-        text=agg_data[['Data','Open', 'High', 'Low', 'Close', 'Mean']].apply(
+        text=formatted_data[['Data','Open', 'High', 'Low', 'Close', 'Mean']].apply(
             lambda row: (
-                f"Data: {row['Data']:%d/%m/%Y}<br>"
-                f"Abertura: {row['Open']:.2f} R$<br>"
-                f"Máximo: {row['High']:.2f} R$<br>"
-                f"Mínimo: {row['Low']:.2f} R$<br>"
-                f"Fechamento: {row['Close']:.2f} R$<br>"
-                f"Média: {row['Mean']:.2f} R$"
+                f"Data: {formatted_dates[agg_data.index.get_loc(row.name)]}<br>"  # Usando a data formatada
+                f"Abertura: {row['Open']} R$<br>"
+                f"Máximo: {row['High']} R$<br>"
+                f"Mínimo: {row['Low']} R$<br>"
+                f"Fechamento: {row['Close']} R$<br>"
+                f"Média: {row['Mean']} R$"
             ), axis=1
         ),  # Passando os valores de cada linha para o hover
         hoverinfo='text'  # Usar o campo 'text' para exibir as informações
@@ -375,16 +500,54 @@ if not agg_data.empty:
         hoverinfo="none",  # Não mostrar o valor no hover
         showlegend=False  # Não mostrar a legenda
     ))
-
     # Atualizar o layout do gráfico
     fig.update_layout(
         title=f'Candlestick ({frequency_bottom}) para o submercado {selected_subsystem_bottom}:',
         yaxis_title="Preço (R$/MWh)",
         xaxis_rangeslider_visible=False,
-        xaxis=dict(tickformat="%d/%m/%Y"),
         template='plotly_dark',
         showlegend=False
     )
+    first_date = agg_data['Data'].min()
+    last_date = agg_data['Data'].max()
+    if frequency_bottom == 'Semanal':
+        num_ticks = 5  # Quantidade de ticks desejados
+        # Selecione as datas para exibir no eixo X com base no número de ticks
+        tick_dates = pd.date_range(
+            start=agg_data['Data'].min(), 
+            end=agg_data['Data'].max(), 
+            freq=f'{int((agg_data['Data'].max() - agg_data['Data'].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+        )
+        # Formatar as datas para o formato desejado
+        tick_dates = [first_date] + list(tick_dates) + [last_date]
+
+        formatted_ticks = [format_week_date(date) for date in tick_dates]
+        # Atualizar o eixo X para usar essas datas formatadas
+        fig.update_xaxes(
+            tickmode='array',
+            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+            ticktext=formatted_ticks,  # Usar as datas formatadas
+            tickangle=0
+        )
+    elif frequency_bottom == 'Mensal':
+        num_ticks = 5  # Quantidade de ticks desejados
+        # Selecione as datas para exibir no eixo X com base no número de ticks
+        tick_dates = pd.date_range(
+            start=agg_data['Data'].min(), 
+            end=agg_data['Data'].max(), 
+            freq=f'{int((agg_data['Data'].max() - agg_data['Data'].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+        )
+        # Formatar as datas para o formato desejado
+        tick_dates = [first_date] + list(tick_dates) + [last_date]
+
+        formatted_ticks = [format_month_date(date) for date in tick_dates]
+        # Atualizar o eixo X para usar essas datas formatadas
+        fig.update_xaxes(
+            tickmode='array',
+            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+            ticktext=formatted_ticks,  # Usar as datas formatadas
+            tickangle=0
+        )
 
     # Exibir o gráfico candlestick
     st.plotly_chart(fig)
