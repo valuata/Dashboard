@@ -3,6 +3,9 @@ import pandas as pd
 import plotly.graph_objs as go
 from datetime import datetime
 from github import Github
+from babel import Locale
+from babel.numbers import format_decimal, format_currency
+from babel.dates import format_date
 
 st.set_page_config(page_title="EARM", layout="wide")
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
@@ -55,6 +58,15 @@ def aggregate_data_earm(data, frequency, metric):
         data.drop(columns=['month'], inplace=True)
 
     return data[['ear_data', 'id_subsistema', 'ear_verif_subsistema_mwmes', 'ear_verif_subsistema_percentual']]
+
+def format_week_date(date):
+    # Calcula o número da semana dentro do mês
+    week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
+    return f"S{week_number}/{format_date(date, format='MMM/yyyy', locale='pt_BR').upper()}"
+def format_month_date(date):
+    return format_date(date, format='MMM/yyyy', locale='pt_BR').upper()
+def format_daily_date(date):
+    return date.strftime('%d/%m/%Y')
 
 def make_subsystem_gauge_charts(data, metric_column, sim_column):
     fig = go.Figure()
@@ -151,7 +163,7 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
 
     # Ajusta o layout do gráfico
     fig.update_layout(
-        title="Nível dos reservatórios (%):",
+        title="Nível dos reservartórios atual:",
         grid={'rows': 1, 'columns': 5},
         showlegend=False,
         height=350,  # Ajusta a altura para acomodar os velocímetros
@@ -171,6 +183,7 @@ def ler_data_arquivo():
 data_atual = datetime.today()
 arquivo_data = 'data_atual_earm.txt'
 data_arquivo = ler_data_arquivo()
+locale = Locale('pt', 'BR')
 
 if (data_atual > data_arquivo and data_atual.hour >= 2):
 
@@ -294,7 +307,7 @@ with col1:
 
 with col2:
     selected_subsystems = st.multiselect(
-        "Selecione os subsistemas",
+        "Selecione os subsistemas", placeholder= 'Escolha uma opção',
         options=['SE/CO', 'S', 'NE', 'N'],
         default=['SE/CO', 'S', 'NE', 'N']  # Seleção padrão
     )
@@ -321,98 +334,171 @@ colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']
 
 # Ordenar os subsistemas selecionados para garantir a ordem correta
 selected_subsystems = sorted(selected_subsystems, key=lambda x: ['SE/CO', 'S', 'NE', 'N'].index(x))
-
-# Gráfico empilhado para a métrica "MWmês"
-if not agg_data.empty:
-    fig_stacked = go.Figure()
-
-    # Ordenação dos subsistemas conforme o seu índice
-    subsystems_order = ['SE/CO', 'S', 'NE', 'N']
-    colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']  # Cores correspondentes a cada subsistema
-    colors_dict = {
-        'SE/CO': '#323e47',
-        'S': '#68aeaa',
-        'NE': '#6b8b89',
-        'N': '#a3d5ce'
-    }
-
-    # Iterando pelos subsistemas e criando as barras
-    for i, subsystem in enumerate(subsystems_order):
-        if subsystem in selected_subsystems:  # Verificar se o subsistema foi selecionado
-            subsystem_data = agg_data[agg_data['id_subsistema'] == subsystem]
-            if not subsystem_data.empty:
-                # Custom data para incluir as informações adicionais no hover
-                custom_data = []
-                for idx, row in subsystem_data.iterrows():
-                    se_val = agg_data[(agg_data['id_subsistema'] == 'SE/CO') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                    s_val = agg_data[(agg_data['id_subsistema'] == 'S') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                    ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                    n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
-                    
-                    sum_val = (se_val[0] if len(se_val) > 0 else 0) + \
-                              (s_val[0] if len(s_val) > 0 else 0) + \
-                              (ne_val[0] if len(ne_val) > 0 else 0) + \
-                              (n_val[0] if len(n_val) > 0 else 0)
-                    
-                    custom_data.append([se_val[0] if len(se_val) > 0 else 0,
-                                        s_val[0] if len(s_val) > 0 else 0,
-                                        ne_val[0] if len(ne_val) > 0 else 0,
-                                        n_val[0] if len(n_val) > 0 else 0,
-                                        sum_val])
-
-                # Criar o hovertemplate dinâmico com base nos subsistemas selecionados
-                hovertemplate = '%{x}: <br>' +  \
-                                'BRASIL: %{customdata[4]:,.1f}<br>'
-
-                if 'SE/CO' in selected_subsystems:
-                    hovertemplate += '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[0]:,.1f}<br>'
-                if 'S' in selected_subsystems:
-                    hovertemplate += '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[1]:,.1f}<br>'
-                if 'NE' in selected_subsystems:
-                    hovertemplate += '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[2]:,.1f}<br>'
-                if 'N' in selected_subsystems:
-                    hovertemplate += '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[3]:,.1f}<br>'
-
-                hovertemplate += '<extra></extra>'
-
-                # Adicionando as barras empilhadas para o subsistema
-                fig_stacked.add_trace(go.Bar(
-                    x=subsystem_data['ear_data'], 
-                    y=subsystem_data[metric_column], 
-                    name=subsystem,
-                    marker_color=colors[i],  # Cor para cada subsistema
-                    hovertemplate=hovertemplate,  # Usando o hovertemplate dinâmico
-                    customdata=custom_data,
-                    legendgroup=subsystem  
-                ))
-
-        if frequency == 'Mensal':
-            xaxis_format = "%m/%Y"  # Para frequência mensal
-        else:
-            xaxis_format = "%d/%m/%Y"  # Para outras frequências
-    # Ajuste do layout
-    fig_stacked.update_layout(
-        title=f"EARM - {metric} ({frequency})",
-        yaxis_title=metric,
-        yaxis_tickformat=",.0f",  # Adicionando separador de milhar com ponto
-        barmode='stack',  # Empilhamento das barras
-        xaxis=dict(tickformat=xaxis_format),  # Formatação da data no eixo X
-        legend=dict(
-            x=0.5, y=-0.2, orientation='h', xanchor='center',
-            traceorder='normal',  
-            itemclick="toggleothers",  # Permite que a legenda filtre por subsistema
-            tracegroupgap=0,
-            itemsizing='constant',  # Tamanho constante dos itens da legenda
-            itemwidth=30  # Tamanho do quadrado colorido na legenda
-        ),
-    )
+with st.spinner('Carregando gráfico...'):
+    # Gráfico empilhado para a métrica "MWmês"
+    if not agg_data.empty:
+        fig_stacked = go.Figure()
     
-    # Exibindo o gráfico
-    st.plotly_chart(fig_stacked)
-    st.write("---")
-else:
-    st.write("Nenhum dado disponível para os filtros selecionados.")
-
+        # Ordenação dos subsistemas conforme o seu índice
+        subsystems_order = ['SE/CO', 'S', 'NE', 'N']
+        colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']  # Cores correspondentes a cada subsistema
+        colors_dict = {
+            'SE/CO': '#323e47',
+            'S': '#68aeaa',
+            'NE': '#6b8b89',
+            'N': '#a3d5ce'
+        }
+    
+        # Iterando pelos subsistemas e criando as barras
+        for i, subsystem in enumerate(subsystems_order):
+            if subsystem in selected_subsystems:  # Verificar se o subsistema foi selecionado
+                subsystem_data = agg_data[agg_data['id_subsistema'] == subsystem]
+                if not subsystem_data.empty:
+                    # Custom data para incluir as informações adicionais no hover
+                    custom_data = []
+                    for idx, row in subsystem_data.iterrows():
+                        se_val = agg_data[(agg_data['id_subsistema'] == 'SE/CO') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
+                        s_val = agg_data[(agg_data['id_subsistema'] == 'S') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
+                        ne_val = agg_data[(agg_data['id_subsistema'] == 'NE') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
+                        n_val = agg_data[(agg_data['id_subsistema'] == 'N') & (agg_data['ear_data'] == row['ear_data'])][metric_column].values
+                        if frequency == 'Diário':
+                            formatted_date = format_daily_date(row['ear_data'])
+                        elif frequency == 'Semanal':
+                            formatted_date = format_week_date(row['ear_data'])
+                        elif frequency == 'Mensal':
+                            formatted_date = format_month_date(row['ear_data'])
+                        sum_val = ((se_val[0] if len(se_val) > 0 else 0) if 'SE/CO' in selected_subsystems else 0) + \
+                                  ((s_val[0] if len(s_val) > 0 else 0)if 'S' in selected_subsystems else 0) + \
+                                  ((ne_val[0] if len(ne_val) > 0 else 0)if 'NE' in selected_subsystems else 0) + \
+                                  ((n_val[0] if len(n_val) > 0 else 0)if 'N' in selected_subsystems else 0)
+                        
+                        custom_data.append([format_decimal(se_val[0] if len(se_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
+                                            format_decimal(s_val[0] if len(s_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
+                                            format_decimal(ne_val[0] if len(ne_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
+                                            format_decimal(n_val[0] if len(n_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
+                                            format_decimal(sum_val, locale='pt_BR', format="#,##0.0"), formatted_date])
+    
+                    # Criar o hovertemplate dinâmico com base nos subsistemas selecionados
+                    hovertemplate = '%{customdata[5]}: <br>' +  \
+                                    'BRASIL: %{customdata[4]:.,1f}<br>'
+    
+                    if 'SE/CO' in selected_subsystems:
+                        hovertemplate += '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[0]:.,1f}<br>'
+                    if 'S' in selected_subsystems:
+                        hovertemplate += '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[1]:.,1f}<br>'
+                    if 'NE' in selected_subsystems:
+                        hovertemplate += '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[2]:.,1f}<br>'
+                    if 'N' in selected_subsystems:
+                        hovertemplate += '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[3]:.,1f}<br>'
+    
+                    hovertemplate += '<extra></extra>'
+    
+                    # Adicionando as barras empilhadas para o subsistema
+                    fig_stacked.add_trace(go.Bar(
+                        x=subsystem_data['ear_data'], 
+                        y=subsystem_data[metric_column], 
+                        name=subsystem,
+                        marker_color=colors[i],  # Cor para cada subsistema
+                        hovertemplate=hovertemplate,  # Usando o hovertemplate dinâmico
+                        customdata=custom_data,
+                        legendgroup=subsystem  
+                    ))
+    
+            if frequency == 'Mensal':
+                xaxis_format = "%m/%Y"  # Para frequência mensal
+            else:
+                xaxis_format = "%d/%m/%Y"  # Para outras frequências
+        # Ajuste do layout
+        fig_stacked.update_layout(
+            title=f"EARM - {metric} ({frequency})",
+            yaxis_title=metric,
+            yaxis_tickformat=",.0f",  # Adicionando separador de milhar com ponto
+            barmode='stack',  # Empilhamento das barras
+            xaxis=dict(tickformat=xaxis_format),  # Formatação da data no eixo X
+            legend=dict(
+                x=0.5, y=-0.2, orientation='h', xanchor='center',
+                traceorder='normal',  
+                itemclick="toggleothers",  # Permite que a legenda filtre por subsistema
+                tracegroupgap=0,
+                itemsizing='constant',  # Tamanho constante dos itens da legenda
+                itemwidth=30  # Tamanho do quadrado colorido na legenda
+            ),
+        )
+        if frequency == 'Diário':
+            num_ticks = 5  # Quantidade de ticks desejados
+    
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=agg_data['ear_data'].min(), 
+                end=agg_data['ear_data'].max(), 
+                freq=f'{int((agg_data["ear_data"].max() - agg_data["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+    
+            # Formatar as datas para o formato desejado
+            formatted_ticks = [format_daily_date(date) for date in tick_dates]
+    
+            # Atualizar o eixo X para usar essas datas formatadas
+            fig_stacked.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+        elif frequency == 'Semanal':
+            num_ticks = 5  # Quantidade de ticks desejados
+    
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=agg_data['ear_data'].min(), 
+                end=agg_data['ear_data'].max(), 
+                freq=f'{int((agg_data["ear_data"].max() - agg_data["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+    
+            # Formatar as datas para o formato desejado
+            formatted_ticks = [format_week_date(date) for date in tick_dates]
+    
+            # Atualizar o eixo X para usar essas datas formatadas
+            fig_stacked.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+        else:
+            num_ticks = 5  # Quantidade de ticks desejados
+    
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=agg_data['ear_data'].min(), 
+                end=agg_data['ear_data'].max(), 
+                freq=f'{int((agg_data["ear_data"].max() - agg_data["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+    
+            # Formatar as datas para o formato desejado
+            formatted_ticks = [format_month_date(date) for date in tick_dates]
+    
+            # Atualizar o eixo X para usar essas datas formatadas
+            fig_stacked.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+    
+        # Atualizar o eixo Y para mostrar valores com uma casa decimal e separadores de milhar
+        fig_stacked.update_layout(
+            hoverlabel=dict(
+                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+            ),
+            yaxis_tickformat='.,0f',
+            yaxis_tickmode='array',
+            yaxis_nticks=5
+        )
+        # Exibindo o gráfico
+        st.plotly_chart(fig_stacked)
+    else:
+        st.write("Nenhum dado disponível para os filtros selecionados.")
+st.write("---")
 
 
 min_date_bottom = earm_data['ear_data'].min().date()
@@ -489,44 +575,64 @@ if not agg_data_bottom.empty:
     if not subsystem_data_bottom.empty:
         fig_bottom = go.Figure()
 
+        # Calcular valores necessários para customdata
+        max_value_bottom = earm_data[earm_data['id_subsistema'] == selected_subsystem_bottom].iloc[-1][f'ear_max_subsistema']
+        remaining_capacity_bottom = max_value_bottom - subsystem_data_bottom['ear_verif_subsistema_mwmes']
+
+        # Função para formatar a data conforme a frequência
+        def format_date_based_on_frequency(date, frequency):
+            if frequency == 'Diário':
+                return format_daily_date(date)
+            elif frequency == 'Semanal':
+                return format_week_date(date)
+            elif frequency == 'Mensal':
+                return format_month_date(date)
+            else:
+                return str(date)  # Caso a frequência seja outro valor
+
+        # Adicionar `formatted_date` ao customdata
+        subsystem_data_bottom['formatted_date'] = subsystem_data_bottom['ear_data'].apply(lambda x: format_date_based_on_frequency(x, frequency_bottom))
+
+        # Função para aplicar a formatação
+        def format_value(value):
+            # Verifica se o valor é válido (não NaN, por exemplo)
+            return format_decimal(value if pd.notna(value) else 0, locale='pt_BR', format="#,##0.0")
+
+        # Formatar as colunas "Valor" e "Capacidade restante" diretamente usando apply
+        subsystem_data_bottom['formatted_value'] = subsystem_data_bottom['ear_verif_subsistema_mwmes'].apply(format_value)
+        subsystem_data_bottom['formatted_remaining_capacity'] = remaining_capacity_bottom.apply(format_value)
+        subsystem_data_bottom['ear_verif_subsistema_percentual'] = subsystem_data_bottom['ear_verif_subsistema_percentual'].apply(format_value)
+
+        # Barra de valor principal (barra de cima)
         fig_bottom.add_trace(go.Bar(
             x=subsystem_data_bottom['ear_data'], 
             y=subsystem_data_bottom['ear_verif_subsistema_mwmes'],  
             name=selected_subsystem_bottom, 
             marker_color=colors_dict[selected_subsystem_bottom],
-            customdata=subsystem_data_bottom['ear_verif_subsistema_percentual'], 
+            customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
             hovertemplate=(
-                "Data: %{x|%d/%m/%Y}<br>"  # Formata a data da barra
-                "Valor: %{y:,.1f} MWmês<br>"  # Exibe a capacidade restante
-                "Capacidade utilizada: %{customdata:,.1f} %<br>"  # Exibe o valor de customdata
+                "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
+                "Valor: %{customdata[2]:.,1f}<br>"  # Exibe o valor formatado
+                "Capacidade utilizada: %{customdata[0]:.,1f} %<br>"  # Exibe o valor de customdata (percentual)
+                "Capacidade restante: %{customdata[4]:.,1f}<br>"  # Exibe a capacidade restante formatada
             ),
-    
         ))
 
-        max_value_bottom = earm_data[earm_data['id_subsistema'] == selected_subsystem_bottom].iloc[-1][f'ear_max_subsistema']
-        remaining_capacity_bottom = max_value_bottom - subsystem_data_bottom['ear_verif_subsistema_mwmes']
-
+        # Barra de capacidade restante (barra de baixo)
         fig_bottom.add_trace(go.Bar(
             x=subsystem_data_bottom['ear_data'],
             y=remaining_capacity_bottom,  
             name=f"{selected_subsystem_bottom} - Faltando",  
             marker_color='rgba(0, 0, 0, 0.2)',
+            customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
+            hovertemplate=(
+                "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
+                "Valor: %{customdata[2]:.,1f}<br>"  # Exibe a capacidade restante formatada
+                "Capacidade utilizada: %{customdata[0]:.,1f} %<br>"  # Exibe o valor de customdata (percentual)
+                "Capacidade restante: %{customdata[4]:.,1f}<br>"  # Exibe o valor da capacidade restante formatado
+            ),
             showlegend=False,
         ))
-
-        fig_bottom.add_trace(go.Scatter(
-            x=subsystem_data_bottom['ear_data'], 
-            y=[max_value_bottom] * len(subsystem_data_bottom),  
-            mode='lines', 
-            name=f"{selected_subsystem_bottom} Max",  
-            line=dict(dash='dash', width=0),
-            showlegend= False
-        ))
-
-        if frequency_bottom == 'Mensal':
-            xaxis_format = "%m/%Y"  # Para frequência mensal
-        else:
-            xaxis_format = "%d/%m/%Y"  # Para outras frequências
 
         fig_bottom.update_layout(
             title=f"EARM - {selected_subsystem_bottom} ({frequency_bottom})",
@@ -535,8 +641,81 @@ if not agg_data_bottom.empty:
             barmode='stack',
             xaxis=dict(tickformat=xaxis_format),  
             legend=dict(x=0.5, y=-0.2, orientation='h', xanchor='center'),
-            showlegend= False
+            showlegend=False
         )
+
+        # Ajuste do eixo X para diferentes frequências
+        if frequency_bottom == 'Diário':
+            num_ticks = 5  # Quantidade de ticks desejados
+    
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=agg_data_bottom['ear_data'].min(), 
+                end=agg_data_bottom['ear_data'].max(), 
+                freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+    
+            # Formatar as datas para o formato desejado
+            formatted_ticks = [format_daily_date(date) for date in tick_dates]
+    
+            # Atualizar o eixo X para usar essas datas formatadas
+            fig_bottom.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+        elif frequency_bottom == 'Semanal':
+            num_ticks = 5  # Quantidade de ticks desejados
+    
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=agg_data_bottom['ear_data'].min(), 
+                end=agg_data_bottom['ear_data'].max(), 
+                freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+    
+            # Formatar as datas para o formato desejado
+            formatted_ticks = [format_week_date(date) for date in tick_dates]
+    
+            # Atualizar o eixo X para usar essas datas formatadas
+            fig_bottom.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+        else:
+            num_ticks = 5  # Quantidade de ticks desejados
+    
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=agg_data_bottom['ear_data'].min(), 
+                end=agg_data_bottom['ear_data'].max(), 
+                freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+    
+            # Formatar as datas para o formato desejado
+            formatted_ticks = [format_month_date(date) for date in tick_dates]
+    
+            # Atualizar o eixo X para usar essas datas formatadas
+            fig_bottom.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+
+        # Atualizar o eixo Y para mostrar valores com uma casa decimal e separadores de milhar
+        fig_bottom.update_layout(
+            hoverlabel=dict(
+                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+            ),
+            yaxis_tickformat='.,0f',
+            yaxis_tickmode='array',
+            yaxis_nticks=5
+        )        
         st.plotly_chart(fig_bottom)
+
 else:
     st.write("Nenhum dado disponível para os filtros selecionados.")
