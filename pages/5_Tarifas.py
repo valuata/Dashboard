@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 # Configuração da página
@@ -39,7 +38,11 @@ st.markdown("""
 # Carregar os dados
 tarifa = pd.read_csv('tarifa_atualizado.csv')
 
-coltitle, coldownload= st.columns([5, 1])
+# Garantir que as datas estão no formato datetime
+tarifa['Início Vigência'] = pd.to_datetime(tarifa['Início Vigência'])
+tarifa['Fim Vigência'] = pd.to_datetime(tarifa['Fim Vigência'])
+
+coltitle, coldownload = st.columns([5, 1])
 with coltitle:
     st.title("Tarifas")
 
@@ -48,125 +51,124 @@ with coldownload:
     st.write("")
     st.write("")
     st.download_button(
-        label= "Download",
-        data= csv,
-        file_name= f'Dados_Tarifas',
+        label="Download",
+        data=csv,
+        file_name=f'Dados_Tarifas.csv',
         mime="text/csv",
     )
-
-# Garantir que as datas estão no formato datetime
-tarifa['Início Vigência'] = pd.to_datetime(tarifa['Início Vigência'])
-tarifa['Fim Vigência'] = pd.to_datetime(tarifa['Fim Vigência'])
 
 # Layout de filtros lado a lado
 col1, col2, col3, col4 = st.columns(4)
 
+# Filtro de Distribuidora (sempre disponível)
 with col1:
     selected_sigla = st.selectbox("Distribuidora", tarifa['Sigla'].unique())
 
+# Filtro de Data de Reajuste (disponível somente se uma distribuidora for selecionada)
 with col2:
-    selected_date = st.selectbox("Data do Reajuste", tarifa['Início Vigência'].dt.strftime('%d/%m/%Y').unique())
+    if selected_sigla:
+        # Ordenar as datas de reajuste cronologicamente
+        sorted_dates = tarifa[tarifa['Sigla'] == selected_sigla]['Início Vigência'].dropna().unique()
+        sorted_dates = sorted(sorted_dates)  # Ordenando em ordem crescente
+        sorted_dates_str = [date.strftime('%d/%m/%Y') for date in sorted_dates]
+        selected_date = st.selectbox("Data do Reajuste", sorted_dates_str)
+    else:
+        selected_date = None
 
+# Filtro de Subgrupo (disponível somente se uma data de reajuste for selecionada)
 with col3:
-    selected_subgrupo = st.selectbox("Subgrupo", tarifa['Subgrupo'].unique())
+    if selected_date:
+        # Filtrar os subgrupos com base na distribuidora e data de reajuste
+        filtered_tarifa = tarifa[(tarifa['Sigla'] == selected_sigla) & 
+                                 (tarifa['Início Vigência'].dt.strftime('%d/%m/%Y') == selected_date)]
+        available_subgrupos = filtered_tarifa['Subgrupo'].unique()
+        selected_subgrupo = st.selectbox("Subgrupo", available_subgrupos)
+    else:
+        selected_subgrupo = None
 
+# Filtro de Modalidade (disponível somente se um subgrupo for selecionado)
 with col4:
-    selected_modalidade = st.selectbox("Modalidade", tarifa['Modalidade'].unique())
+    if selected_subgrupo:
+        # Filtrar as modalidades com base na distribuidora, data de reajuste e subgrupo
+        filtered_tarifa = tarifa[(tarifa['Sigla'] == selected_sigla) & 
+                                 (tarifa['Início Vigência'].dt.strftime('%d/%m/%Y') == selected_date) & 
+                                 (tarifa['Subgrupo'] == selected_subgrupo)]
+        available_modalidades = filtered_tarifa['Modalidade'].unique()
+        selected_modalidade = st.selectbox("Modalidade", available_modalidades)
+    else:
+        selected_modalidade = None
 
-# Filtrar dados com base nos filtros selecionados
+# Filtrar os dados após todas as seleções
 filtered_tarifa = tarifa[
-    (tarifa['Sigla'] == selected_sigla) &
-    (tarifa['Início Vigência'].dt.strftime('%d/%m/%Y') == selected_date) &
-    (tarifa['Subgrupo'] == selected_subgrupo) &
+    (tarifa['Sigla'] == selected_sigla) & 
+    (tarifa['Subgrupo'] == selected_subgrupo) & 
     (tarifa['Modalidade'] == selected_modalidade)
 ]
 
-# Gráfico 1: Comparação de TUSD e TE
-st.write("### Comparação de tarifas (TUSD e TE)")
-if not filtered_tarifa.empty:
-    fig_tusd_te = px.bar(
-        filtered_tarifa,
-        x='Posto',
-        y=['TUSD', 'TE'],
-        color='Unidade',
-        barmode='group',
-        labels={'value': 'Valor (R$)', 'variable': 'Tipo de tarifa'},
-        title="Comparação de tarifas por posto",
-    )
-    # Alterar a cor do gráfico de barras
-    fig_tusd_te.update_traces(marker_color='#323e47')
-    st.plotly_chart(fig_tusd_te)
+# Verificar se há dados após filtro
+if filtered_tarifa.empty:
+    st.write("Nenhum dado encontrado para os filtros selecionados.")
 else:
-    st.write("Nenhum dado disponível para os filtros selecionados.")
+    # 1. Filtrar TUSD Demanda e TUSD Encargo
+    tusd_demanda = filtered_tarifa[filtered_tarifa['Unidade'] == 'R$/kW']
+    tusd_encargo = filtered_tarifa[filtered_tarifa['Unidade'] == 'R$/MWh']
 
-# Gráfico 2: Análise Temporal de Tarifas (Independente do Filtro de Data do Reajuste)
-st.write("### Análise temporal de tarifas")
+    # Função para gerar gráfico de barras TUSD
+    def create_tusd_bar_chart(df, title):
+        postos = ['Única', 'Ponta', 'Fora ponta']
+        bars_data = []
 
-if not tarifa.empty:
-    # Aplicar filtros sem considerar a data de reajuste
-    filtered_tarifa_temporal = tarifa[
-        (tarifa['Sigla'] == selected_sigla) &
-        (tarifa['Subgrupo'] == selected_subgrupo) &
-        (tarifa['Modalidade'] == selected_modalidade)
-    ]
+        for posto in postos:
+            # Filtrar dados por posto
+            posto_data = df[df['Posto'] == posto]
+            
+            if posto_data.empty:
+                bars_data.append({'Posto': posto, 'Valor': 0})  # Se não houver dados, atribui 0
+            
+            else:
+                # Obter o valor de TUSD
+                current_value = posto_data['TUSD'].values[0] if not posto_data.empty else 0
+                bars_data.append({'Posto': posto, 'Valor': current_value})
 
-    if not filtered_tarifa_temporal.empty:
-        # Obter lista de postos únicos para o filtro de seleção múltipla
-        unique_postos = filtered_tarifa_temporal['Posto'].unique()
-        selected_postos = st.multiselect(
-            "Selecione os postos para exibir no gráfico",
-            options=unique_postos,
-            default=unique_postos  # Todos selecionados por padrão
+        # Criar o gráfico
+        fig = go.Figure()
+        for bar_data in bars_data:
+            fig.add_trace(go.Bar(
+                x=[bar_data['Posto']],
+                y=[bar_data['Valor']],
+                name='',
+                marker=dict(color='#323e47'),
+                showlegend=False
+            ))
+        
+        # Layout do gráfico
+        fig.update_layout(
+            title=title,
+            xaxis_title=" ",
+            yaxis_title="Valor (R$)",
+            barmode='group'
         )
+        
+        return fig
 
-        # Filtrar pelos postos selecionados
-        filtered_tarifa_temporal = filtered_tarifa_temporal[
-            filtered_tarifa_temporal['Posto'].isin(selected_postos)
-        ]
+    # Layout para os gráficos lado a lado
+    col1, col2 = st.columns(2)
 
-        if not filtered_tarifa_temporal.empty:
-            fig_temporal = go.Figure()
-
-            # Adicionar linhas para os postos selecionados
-            # Alterando as cores das linhas
-            color_sequence = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']  # Sequência de cores
-
-            for i, posto in enumerate(filtered_tarifa_temporal['Posto'].unique()):
-                subset = filtered_tarifa_temporal[filtered_tarifa_temporal['Posto'] == posto]
-                fig_temporal.add_trace(go.Scatter(
-                    x=subset['Início Vigência'],
-                    y=subset['TUSD'],
-                    mode='lines+markers',
-                    name=f"TUSD - {posto}",
-                    line=dict(color=color_sequence[i % len(color_sequence)])  # Cicla pelas cores
-                ))
-                fig_temporal.add_trace(go.Scatter(
-                    x=subset['Início Vigência'],
-                    y=subset['TE'],
-                    mode='lines+markers',
-                    name=f"TE - {posto}",
-                    line=dict(color=color_sequence[i % len(color_sequence)])  # Cicla pelas cores
-                ))
-
-            # Configurações do layout do gráfico
-            fig_temporal.update_layout(
-                title="Evolução temporal das tarifas",
-                yaxis_title="Valor (R$)",
-                legend=dict(
-                orientation="h",
-                yanchor="bottom", 
-                y=-0.5,
-                xanchor="center",
-                x=0.5),
-                xaxis=dict(tickformat="%d/%m/%Y")
-            )
-            st.plotly_chart(fig_temporal)
+    # Gráfico 1: TUSD Demanda
+    with col1:
+        if not tusd_demanda.empty:
+            fig_tusd_demanda = create_tusd_bar_chart(tusd_demanda, 'TUSD Demanda')
+            st.plotly_chart(fig_tusd_demanda)
         else:
-            st.write("Nenhum dado disponível para os postos selecionados.")
-    else:
-        st.write("Nenhum dado disponível para os filtros aplicados.")
-else:
-    st.write("Nenhum dado disponível no dataset.")
+            st.write("Nenhum dado disponível para TUSD Demanda.")
+
+    # Gráfico 2: TUSD Encargo
+    with col2:
+        if not tusd_encargo.empty:
+            fig_tusd_encargo = create_tusd_bar_chart(tusd_encargo, 'TUSD Encargo')
+            st.plotly_chart(fig_tusd_encargo)
+        else:
+            st.write("Nenhum dado disponível para TUSD Encargo.")
 
 st.write("---")
 st.write("### Variação das Bandeiras Tarifárias")
