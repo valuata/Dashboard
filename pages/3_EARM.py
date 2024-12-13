@@ -607,7 +607,7 @@ if not agg_data_bottom.empty:
         fig_bottom.add_trace(go.Bar(
             x=subsystem_data_bottom['ear_data'], 
             y=subsystem_data_bottom['ear_verif_subsistema_mwmes'],  
-            name=selected_subsystem_bottom, 
+            name='', 
             marker_color=colors_dict[selected_subsystem_bottom],
             customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
             hovertemplate=(
@@ -622,7 +622,7 @@ if not agg_data_bottom.empty:
         fig_bottom.add_trace(go.Bar(
             x=subsystem_data_bottom['ear_data'],
             y=remaining_capacity_bottom,  
-            name=f"{selected_subsystem_bottom} - Faltando",  
+            name='',  
             marker_color='rgba(0, 0, 0, 0.2)',
             customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
             hovertemplate=(
