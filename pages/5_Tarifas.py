@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-
+from babel import Locale
+from babel.numbers import format_decimal, format_currency
 # Configuração da página
 st.set_page_config(page_title="Tarifas", layout="wide")
 
@@ -37,6 +38,8 @@ st.markdown("""
 
 # Carregar os dados
 tarifa = pd.read_csv('tarifa_atualizado.csv')
+tarifa['Posto'] = tarifa['Posto'].replace('Não se aplica', 'Única')
+locale = Locale('pt', 'BR')
 
 # Garantir que as datas estão no formato datetime
 tarifa['Início Vigência'] = pd.to_datetime(tarifa['Início Vigência'])
@@ -71,7 +74,12 @@ with col2:
         sorted_dates = tarifa[tarifa['Sigla'] == selected_sigla]['Início Vigência'].dropna().unique()
         sorted_dates = sorted(sorted_dates)  # Ordenando em ordem crescente
         sorted_dates_str = [date.strftime('%d/%m/%Y') for date in sorted_dates]
-        selected_date = st.selectbox("Data do Reajuste", sorted_dates_str)
+        selected_date = st.selectbox("Data do Reajuste", sorted_dates_str, index=len(sorted_dates_str)-1)
+        selected_index = sorted_dates_str.index(selected_date)  # Índice da data selecionada
+        if selected_index > 0:
+            previous_date = sorted_dates_str[selected_index - 1]  # Valor anterior
+        else:
+            previous_date = None
     else:
         selected_date = None
 
@@ -97,10 +105,17 @@ with col4:
         selected_modalidade = st.selectbox("Modalidade", available_modalidades)
     else:
         selected_modalidade = None
-
+tarifa['Início Vigência'] = pd.to_datetime(tarifa['Início Vigência']).dt.strftime('%d/%m/%Y')
 # Filtrar os dados após todas as seleções
 filtered_tarifa = tarifa[
     (tarifa['Sigla'] == selected_sigla) & 
+    (tarifa['Início Vigência'] == selected_date) &
+    (tarifa['Subgrupo'] == selected_subgrupo) & 
+    (tarifa['Modalidade'] == selected_modalidade)
+]
+filtered_tarifa_previous = tarifa[
+    (tarifa['Sigla'] == selected_sigla) & 
+    (tarifa['Início Vigência'] == previous_date) &
     (tarifa['Subgrupo'] == selected_subgrupo) & 
     (tarifa['Modalidade'] == selected_modalidade)
 ]
@@ -112,63 +127,306 @@ else:
     # 1. Filtrar TUSD Demanda e TUSD Encargo
     tusd_demanda = filtered_tarifa[filtered_tarifa['Unidade'] == 'R$/kW']
     tusd_encargo = filtered_tarifa[filtered_tarifa['Unidade'] == 'R$/MWh']
+    tusd_demanda_previous = filtered_tarifa_previous[filtered_tarifa_previous['Unidade'] == 'R$/kW']
+    tusd_encargo_previous = filtered_tarifa_previous[filtered_tarifa_previous['Unidade'] == 'R$/MWh']
 
-    # Função para gerar gráfico de barras TUSD
-    def create_tusd_bar_chart(df, title):
+    # Layout para os gráficos lado a lado
+    col1, col2 ,col3= st.columns(3)
+
+    # Gráfico 1: TUSD Demanda
+    with col1:
         postos = ['Única', 'Ponta', 'Fora ponta']
         bars_data = []
+        fig_tusd_demanda = go.Figure()
+        legend_entries = []  # Para armazenar os dados da legenda
 
         for posto in postos:
             # Filtrar dados por posto
-            posto_data = df[df['Posto'] == posto]
+            posto_data = tusd_demanda_previous[tusd_demanda_previous['Posto'] == posto]
             
             if posto_data.empty:
-                bars_data.append({'Posto': posto, 'Valor': 0})  # Se não houver dados, atribui 0
-            
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})  # Se não houver dados, atribui 0
             else:
                 # Obter o valor de TUSD
                 current_value = posto_data['TUSD'].values[0] if not posto_data.empty else 0
-                bars_data.append({'Posto': posto, 'Valor': current_value})
+                vigencia = posto_data['Início Vigência'].values[0] if not posto_data.empty else ''
+                
+                # Formatar o valor no formato português
+                formatted_value = format_decimal(current_value, locale='pt_BR', format="#,##0.00")
+
+                # Adicionar o valor e o valor formatado ao bar_data
+                bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
 
         # Criar o gráfico
-        fig = go.Figure()
         for bar_data in bars_data:
-            fig.add_trace(go.Bar(
+            fig_tusd_demanda.add_trace(go.Bar(
+                x=[bar_data['Posto']],
+                y=[bar_data['Valor']],  # Valor como número
+                name='',
+                marker=dict(color='#e28876'),
+                showlegend=False,
+                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                text=[bar_data['FormattedValor']],
+                textposition='inside',
+            ))
+        legend_entries.append({'color': '#e28876', 'text': vigencia})
+
+        bars_data = []
+        for posto in postos:
+            # Filtrar dados por posto
+            posto_data = tusd_demanda[tusd_demanda['Posto'] == posto]
+            
+            if posto_data.empty:
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})  # Se não houver dados, atribui 0
+            else:
+                # Obter o valor de TUSD
+                current_value = posto_data['TUSD'].values[0] if not posto_data.empty else 0
+                vigencia = posto_data['Início Vigência'].values[0] if not posto_data.empty else ''
+                
+                # Formatar o valor no formato português
+                formatted_value = format_decimal(current_value, locale='pt_BR', format="#,##0.00")
+
+                # Adicionar o valor e o valor formatado ao bar_data
+                bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
+
+        for bar_data in bars_data:
+            fig_tusd_demanda.add_trace(go.Bar(
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 name='',
                 marker=dict(color='#323e47'),
-                showlegend=False
+                showlegend=False,
+                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                text=[bar_data['FormattedValor']],
+                textposition='inside',  
+
             ))
+            # Adicionar entrada para a legenda
+        legend_entries.append({'color': '#323e47', 'text': vigencia})
         
+
         # Layout do gráfico
-        fig.update_layout(
-            title=title,
+        fig_tusd_demanda.update_layout(
+            title='TUSD Demanda',
             xaxis_title=" ",
-            yaxis_title="Valor (R$)",
-            barmode='group'
+            yaxis_title="Valor (R$/kW)",
+            barmode='group',
+            yaxis=dict(range=[0, None]),  # Restringir eixo Y a começar de 0
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", 
+                y=-0.25,
+                xanchor="center",
+                x=0.5,
+                traceorder="normal"  # Garante que a ordem da legenda seja conforme o esperado
+            ),
         )
-        
-        return fig
 
-    # Layout para os gráficos lado a lado
-    col1, col2 = st.columns(2)
+        # Adicionar manualmente os itens da legenda abaixo do gráfico
+        for entry in legend_entries:
+            fig_tusd_demanda.add_trace(go.Scatter(
+                x=[None], y=[None], mode='markers',
+                marker=dict(color=entry['color'], size=10),
+                name=entry['text'],
+                showlegend=True
+            ))
 
-    # Gráfico 1: TUSD Demanda
-    with col1:
-        if not tusd_demanda.empty:
-            fig_tusd_demanda = create_tusd_bar_chart(tusd_demanda, 'TUSD Demanda')
-            st.plotly_chart(fig_tusd_demanda)
-        else:
-            st.write("Nenhum dado disponível para TUSD Demanda.")
+        # Mostrar o gráfico
+        st.plotly_chart(fig_tusd_demanda)
+
 
     # Gráfico 2: TUSD Encargo
     with col2:
-        if not tusd_encargo.empty:
-            fig_tusd_encargo = create_tusd_bar_chart(tusd_encargo, 'TUSD Encargo')
-            st.plotly_chart(fig_tusd_encargo)
-        else:
-            st.write("Nenhum dado disponível para TUSD Encargo.")
+        postos = ['Única', 'Ponta', 'Fora ponta']
+        bars_data = []
+        legend_entries = []
+        fig_tusd_encargo = go.Figure()
+
+        for posto in postos:
+            # Filtrar dados por posto
+            posto_data = tusd_encargo_previous[tusd_encargo_previous['Posto'] == posto]
+            
+            if posto_data.empty:
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})  # Se não houver dados, atribui 0
+            else:
+                # Obter o valor de TUSD
+                current_value = posto_data['TUSD'].values[0] if not posto_data.empty else 0
+                vigencia = posto_data['Início Vigência'].values[0] if not posto_data.empty else ''
+                
+                # Formatar o valor no formato português
+                formatted_value = format_decimal(current_value, locale='pt_BR', format="#,##0.00")
+
+                # Adicionar o valor e o valor formatado ao bar_data
+                bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
+
+        # Criar o gráfico
+        for bar_data in bars_data:
+            fig_tusd_encargo.add_trace(go.Bar(
+                x=[bar_data['Posto']],
+                y=[bar_data['Valor']],
+                name='',
+                marker=dict(color='#e28876'),
+                showlegend=False,
+                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                text=[bar_data['FormattedValor']],
+                textposition='inside',
+            ))
+        legend_entries.append({'color': '#e28876', 'text': vigencia})
+
+        bars_data = []
+        for posto in postos:
+            # Filtrar dados por posto
+            posto_data = tusd_encargo[tusd_encargo['Posto'] == posto]
+            
+            if posto_data.empty:
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})  # Se não houver dados, atribui 0
+            else:
+                # Obter o valor de TUSD
+                current_value = posto_data['TUSD'].values[0] if not posto_data.empty else 0
+                vigencia = posto_data['Início Vigência'].values[0] if not posto_data.empty else ''
+                
+                # Formatar o valor no formato português
+                formatted_value = format_decimal(current_value, locale='pt_BR', format="#,##0.00")
+
+                # Adicionar o valor e o valor formatado ao bar_data
+                bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
+
+        # Criar o gráfico
+        for bar_data in bars_data:
+            fig_tusd_encargo.add_trace(go.Bar(
+                x=[bar_data['Posto']],
+                y=[bar_data['Valor']],
+                name='',
+                marker=dict(color='#323e47'),
+                showlegend=False,
+                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                text=[bar_data['FormattedValor']],
+                textposition='inside',
+            ))
+        legend_entries.append({'color': '#323e47', 'text': vigencia})
+
+        # Layout do gráfico
+        fig_tusd_encargo.update_layout(
+            title='TUSD Encargo',
+            xaxis_title=" ",
+            yaxis_title="Valor (R$/kWh)",
+            barmode='group',
+            yaxis=dict(range=[0, None]),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", 
+                y=-0.25,
+                xanchor="center",
+                x=0.5,
+                traceorder="normal"  # Garante que a ordem da legenda seja conforme o esperado
+            ),)
+        
+        for entry in legend_entries:
+            fig_tusd_encargo.add_trace(go.Scatter(
+                x=[None], y=[None], mode='markers',
+                marker=dict(color=entry['color'], size=10),
+                name=entry['text'],
+                showlegend=True
+            ))
+
+        st.plotly_chart(fig_tusd_encargo)
+
+    # Gráfico 3: TUSD Tarifa
+    with col3:
+        postos = ['Única', 'Ponta', 'Fora ponta']
+        bars_data = []
+        legend_entries = []
+        fig_tusd_tarifa = go.Figure()
+
+        for posto in postos:
+            # Filtrar dados por posto
+            posto_data = tusd_encargo_previous[tusd_encargo_previous['Posto'] == posto]
+            
+            if posto_data.empty:
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})  # Se não houver dados, atribui 0
+            else:
+                # Obter o valor de TUSD
+                current_value = posto_data['TE'].values[0] if not posto_data.empty else 0
+                vigencia = posto_data['Início Vigência'].values[0] if not posto_data.empty else ''
+                
+                # Formatar o valor no formato português
+                formatted_value = format_decimal(current_value, locale='pt_BR', format="#,##0.00")
+
+                # Adicionar o valor e o valor formatado ao bar_data
+                bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
+
+        # Criar o gráfico
+        for bar_data in bars_data:
+            fig_tusd_tarifa.add_trace(go.Bar(
+                x=[bar_data['Posto']],
+                y=[bar_data['Valor']],
+                name='',
+                marker=dict(color='#e28876'),
+                showlegend=False,
+                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                text=[bar_data['FormattedValor']],
+                textposition='inside',
+            ))
+        legend_entries.append({'color': '#e28876', 'text': vigencia})
+
+
+        bars_data = []
+        for posto in postos:
+            # Filtrar dados por posto
+            posto_data = tusd_encargo[tusd_encargo['Posto'] == posto]
+            
+            if posto_data.empty:
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})  # Se não houver dados, atribui 0
+            else:
+                # Obter o valor de TUSD
+                current_value = posto_data['TE'].values[0] if not posto_data.empty else 0
+                vigencia = posto_data['Início Vigência'].values[0] if not posto_data.empty else ''
+                
+                # Formatar o valor no formato português
+                formatted_value = format_decimal(current_value, locale='pt_BR', format="#,##0.00")
+
+                # Adicionar o valor e o valor formatado ao bar_data
+                bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
+
+        # Criar o gráfico
+        for bar_data in bars_data:
+            fig_tusd_tarifa.add_trace(go.Bar(
+                x=[bar_data['Posto']],
+                y=[bar_data['Valor']],
+                name='',
+                marker=dict(color='#323e47'),
+                showlegend=False,
+                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                text=[bar_data['FormattedValor']],
+                textposition='inside',
+            ))
+        legend_entries.append({'color': '#323e47', 'text': vigencia})
+
+        # Layout do gráfico
+        fig_tusd_tarifa.update_layout(
+            title='Tarifa de energia',
+            xaxis_title=" ",
+            yaxis_title="Valor (R$/kWh)",
+            barmode='group',
+            yaxis=dict(range=[0, None]),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom", 
+                y=-0.25,
+                xanchor="center",
+                x=0.5,
+                traceorder="normal"  # Garante que a ordem da legenda seja conforme o esperado
+            ),)
+
+        for entry in legend_entries:
+            fig_tusd_tarifa.add_trace(go.Scatter(
+                x=[None], y=[None], mode='markers',
+                marker=dict(color=entry['color'], size=10),
+                name=entry['text'],
+                showlegend=True
+            ))
+        st.plotly_chart(fig_tusd_tarifa)
+
 
 st.write("---")
 st.write("### Variação das Bandeiras Tarifárias")
