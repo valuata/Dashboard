@@ -376,8 +376,8 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
             # Exibindo o gráfico
             st.plotly_chart(fig, use_container_width=True)
 
-# Chamando a função para gerar os gráficos
-plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia)
+with st.spinner('Carregando gráfico...'):
+    plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia)
 
 st.write('---')
 
@@ -468,7 +468,11 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
     st.plotly_chart(fig, use_container_width=True)
 
 # Chamando a função para gerar o gráfico histórico para diferentes previsões
-plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+1')
-plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+2')
-plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+3')
-plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+4')
+with st.spinner('Carregando gráfico...'):
+    plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+1')
+with st.spinner('Carregando gráfico...'):
+    plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+2')
+with st.spinner('Carregando gráfico...'):
+    plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+3')
+with st.spinner('Carregando gráfico...'):
+    plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+4')
