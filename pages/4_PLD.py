@@ -157,8 +157,9 @@ aggregated_avg_values = aggregate_data_for_avg_values(filtered_data, frequency=p
 
 # Filtrar dados para os submercados selecionados
 filtered_avg_values = aggregated_avg_values[aggregated_avg_values['Submercado'].isin(selected_submarkets)]
+
 if not selected_submarkets:
-    st.write("Por favor, selecione pelo menos um submercado para exibir o gráfico.")
+    st.write("Sem informações disponíveis para a filtragem feita.")
 # Create the average line graph for each selected submarket
 else: 
     avg_values_per_submarket_graph = go.Figure()
@@ -443,114 +444,115 @@ decreasing_color = '#e28876'  # Cor para candles de baixa (vermelho)
 
 # Cor da linha whisker
 whisker_line_color = '#323e47'
+with st.spinner('Carregando gráfico...'):
 
-# Verificar se os dados não estão vazios
-if not agg_data.empty:
-    # Lista para armazenar as datas formatadas
-    formatted_dates = []
-    
-    # Formatar as datas de acordo com o período (Semanal ou Mensal)
-    if frequency_bottom == 'Semanal':
-        formatted_dates = [format_week_date(date) for date in agg_data['Data']]
-    elif frequency_bottom == 'Mensal':
-        formatted_dates = [format_month_date(date) for date in agg_data['Data']]
+    # Verificar se os dados não estão vazios
+    if not agg_data.empty:
+        # Lista para armazenar as datas formatadas
+        formatted_dates = []
+        
+        # Formatar as datas de acordo com o período (Semanal ou Mensal)
+        if frequency_bottom == 'Semanal':
+            formatted_dates = [format_week_date(date) for date in agg_data['Data']]
+        elif frequency_bottom == 'Mensal':
+            formatted_dates = [format_month_date(date) for date in agg_data['Data']]
 
-    # Criar o gráfico de candlestick
-    fig = go.Figure(data=[go.Candlestick(
-        x=agg_data['Data'],
-        open=agg_data['Open'],
-        high=agg_data['High'],
-        low=agg_data['Low'],
-        close=agg_data['Close'],
-        name=f'Candlestick - {selected_subsystem_bottom}',
-        increasing=dict(line=dict(color=increasing_color), fillcolor=increasing_color),  # Customize increasing candle
-        decreasing=dict(line=dict(color=decreasing_color), fillcolor=decreasing_color),  # Exibir a legenda
-        text=formatted_data[['Data','Open', 'High', 'Low', 'Close', 'Mean']].apply(
-            lambda row: (
-                f"Data: {formatted_dates[agg_data.index.get_loc(row.name)]}<br>"  # Usando a data formatada
-                f"Abertura: {row['Open']} R$<br>"
-                f"Máximo: {row['High']} R$<br>"
-                f"Mínimo: {row['Low']} R$<br>"
-                f"Fechamento: {row['Close']} R$<br>"
-                f"Média: {row['Mean']} R$"
-            ), axis=1
-        ),  # Passando os valores de cada linha para o hover
-        hoverinfo='text'  # Usar o campo 'text' para exibir as informações
-    )])
+        # Criar o gráfico de candlestick
+        fig = go.Figure(data=[go.Candlestick(
+            x=agg_data['Data'],
+            open=agg_data['Open'],
+            high=agg_data['High'],
+            low=agg_data['Low'],
+            close=agg_data['Close'],
+            name=f'Candlestick - {selected_subsystem_bottom}',
+            increasing=dict(line=dict(color=increasing_color), fillcolor=increasing_color),  # Customize increasing candle
+            decreasing=dict(line=dict(color=decreasing_color), fillcolor=decreasing_color),  # Exibir a legenda
+            text=formatted_data[['Data','Open', 'High', 'Low', 'Close', 'Mean']].apply(
+                lambda row: (
+                    f"Data: {formatted_dates[agg_data.index.get_loc(row.name)]}<br>"  # Usando a data formatada
+                    f"Abertura: {row['Open']} R$<br>"
+                    f"Máximo: {row['High']} R$<br>"
+                    f"Mínimo: {row['Low']} R$<br>"
+                    f"Fechamento: {row['Close']} R$<br>"
+                    f"Média: {row['Mean']} R$"
+                ), axis=1
+            ),  # Passando os valores de cada linha para o hover
+            hoverinfo='text'  # Usar o campo 'text' para exibir as informações
+        )])
 
-    # Adicionar a linha whisker com maior alcance horizontal e hover do valor médio
-    for i in range(len(agg_data)):
-        # Ajustar o próximo ponto de data para estender a linha (exemplo: 1 dia para diário)
-        if frequency_bottom == "Mensal":
-            next_x = agg_data['Data'][i] + timedelta(weeks=4)  # Aumentar o intervalo para 4 semanas
-        elif frequency_bottom == "Semanal":
-            next_x = agg_data['Data'][i] + timedelta(weeks=1)  # Aumentar o intervalo para 1 semana
-    x_vals = []
-    y_vals = []
-    for i in range(len(agg_data)):
-        x_vals.append(agg_data['Data'][i])  # Adiciona o valor do eixo X
-        y_vals.append(agg_data['Mean'][i])  # Adiciona o valor do eixo Y (média)
+        # Adicionar a linha whisker com maior alcance horizontal e hover do valor médio
+        for i in range(len(agg_data)):
+            # Ajustar o próximo ponto de data para estender a linha (exemplo: 1 dia para diário)
+            if frequency_bottom == "Mensal":
+                next_x = agg_data['Data'][i] + timedelta(weeks=4)  # Aumentar o intervalo para 4 semanas
+            elif frequency_bottom == "Semanal":
+                next_x = agg_data['Data'][i] + timedelta(weeks=1)  # Aumentar o intervalo para 1 semana
+        x_vals = []
+        y_vals = []
+        for i in range(len(agg_data)):
+            x_vals.append(agg_data['Data'][i])  # Adiciona o valor do eixo X
+            y_vals.append(agg_data['Mean'][i])  # Adiciona o valor do eixo Y (média)
 
-    # Agora, adicione a trace com todas as coordenadas x e y
-    fig.add_trace(go.Scatter(
-        x=x_vals,  # Lista de todos os valores de x
-        y=y_vals,  # Lista de todos os valores de y
-        mode='markers',  # Apenas marcadores
-        marker=dict(color=whisker_line_color, cauto=False, size=5),  # Cor e tamanho do marcador
-        hoverinfo="none",  # Não mostrar o valor no hover
-        showlegend=False  # Não mostrar a legenda
-    ))
-    # Atualizar o layout do gráfico
-    fig.update_layout(
-        title=f'Candlestick ({frequency_bottom}) para o submercado {selected_subsystem_bottom}:',
-        yaxis_title="Preço (R$/MWh)",
-        xaxis_rangeslider_visible=False,
-        template='plotly_dark',
-        showlegend=False
-    )
-    first_date = agg_data['Data'].min()
-    last_date = agg_data['Data'].max()
-    if frequency_bottom == 'Semanal':
-        num_ticks = 5  # Quantidade de ticks desejados
-        # Selecione as datas para exibir no eixo X com base no número de ticks
-        tick_dates = pd.date_range(
-            start=agg_data['Data'].min(), 
-            end=agg_data['Data'].max(), 
-            freq=f'{int((agg_data['Data'].max() - agg_data['Data'].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+        # Agora, adicione a trace com todas as coordenadas x e y
+        fig.add_trace(go.Scatter(
+            x=x_vals,  # Lista de todos os valores de x
+            y=y_vals,  # Lista de todos os valores de y
+            mode='markers',  # Apenas marcadores
+            marker=dict(color=whisker_line_color, cauto=False, size=5),  # Cor e tamanho do marcador
+            hoverinfo="none",  # Não mostrar o valor no hover
+            showlegend=False  # Não mostrar a legenda
+        ))
+        # Atualizar o layout do gráfico
+        fig.update_layout(
+            title=f'Candlestick ({frequency_bottom}) para o submercado {selected_subsystem_bottom}:',
+            yaxis_title="Preço (R$/MWh)",
+            xaxis_rangeslider_visible=False,
+            template='plotly_dark',
+            showlegend=False
         )
-        # Formatar as datas para o formato desejado
-        tick_dates = [first_date] + list(tick_dates) + [last_date]
+        first_date = agg_data['Data'].min()
+        last_date = agg_data['Data'].max()
+        if frequency_bottom == 'Semanal':
+            num_ticks = 5  # Quantidade de ticks desejados
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=agg_data['Data'].min(), 
+                end=agg_data['Data'].max(), 
+                freq=f'{int((agg_data['Data'].max() - agg_data['Data'].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+            # Formatar as datas para o formato desejado
+            tick_dates = [first_date] + list(tick_dates) + [last_date]
 
-        formatted_ticks = [format_week_date(date) for date in tick_dates]
-        # Atualizar o eixo X para usar essas datas formatadas
-        fig.update_xaxes(
-            tickmode='array',
-            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-            ticktext=formatted_ticks,  # Usar as datas formatadas
-            tickangle=0
-        )
-    elif frequency_bottom == 'Mensal':
-        num_ticks = 5  # Quantidade de ticks desejados
-        # Selecione as datas para exibir no eixo X com base no número de ticks
-        tick_dates = pd.date_range(
-            start=agg_data['Data'].min(), 
-            end=agg_data['Data'].max(), 
-            freq=f'{int((agg_data['Data'].max() - agg_data['Data'].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
-        )
-        # Formatar as datas para o formato desejado
-        tick_dates = [first_date] + list(tick_dates) + [last_date]
+            formatted_ticks = [format_week_date(date) for date in tick_dates]
+            # Atualizar o eixo X para usar essas datas formatadas
+            fig.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
+        elif frequency_bottom == 'Mensal':
+            num_ticks = 5  # Quantidade de ticks desejados
+            # Selecione as datas para exibir no eixo X com base no número de ticks
+            tick_dates = pd.date_range(
+                start=agg_data['Data'].min(), 
+                end=agg_data['Data'].max(), 
+                freq=f'{int((agg_data['Data'].max() - agg_data['Data'].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
+            # Formatar as datas para o formato desejado
+            tick_dates = [first_date] + list(tick_dates) + [last_date]
 
-        formatted_ticks = [format_month_date(date) for date in tick_dates]
-        # Atualizar o eixo X para usar essas datas formatadas
-        fig.update_xaxes(
-            tickmode='array',
-            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-            ticktext=formatted_ticks,  # Usar as datas formatadas
-            tickangle=0
-        )
+            formatted_ticks = [format_month_date(date) for date in tick_dates]
+            # Atualizar o eixo X para usar essas datas formatadas
+            fig.update_xaxes(
+                tickmode='array',
+                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=formatted_ticks,  # Usar as datas formatadas
+                tickangle=0
+            )
 
-    # Exibir o gráfico candlestick
-    st.plotly_chart(fig)
+        # Exibir o gráfico candlestick
+        st.plotly_chart(fig)
 
-else:
-    st.write("Sem informações para a filtragem selecionada")
+    else:
+        st.write("Sem informações para a filtragem selecionada")
