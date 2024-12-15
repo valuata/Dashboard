@@ -69,42 +69,44 @@ def format_daily_date(date):
     return date.strftime('%d/%m/%Y')
 
 def make_subsystem_gauge_charts(data, metric_column, sim_column):
-    fig = go.Figure()
-
     # Define a ordem dos velocímetros para garantir que sejam colocados de forma organizada
     gauges_order = ['SE/CO', 'S', 'NE', 'N', 'BRASIL']
-
+    
     subsystems = ['SE/CO', 'S', 'NE', 'N']
-    num_gauges = len(gauges_order)  # Número total de velocímetros
-
+    
+    # Para cada subsistema, cria um gráfico individual
+    figs = []
+    
     # Ajusta a largura dos velocímetros dinamicamente com base no número de velocímetros
-    max_gauge_width = 0.18  # Largura máxima dos velocímetros
+    max_gauge_width = 0.8  # Aumentando a largura máxima dos velocímetros
     gap = 0.05  # Espaço entre os velocímetros
 
-    # Calcular a largura total necessária para acomodar todos os velocímetros e seus gaps
-    total_required_width = num_gauges * (max_gauge_width + gap) - gap
-    
+    num_gauges = len(gauges_order)  # Número total de velocímetros
+    total_required_width = num_gauges * (max_gauge_width + gap) - gap  # Calcular a largura total necessária
+
     # Ajustar a largura de cada velocímetro para garantir que o total não ultrapasse 1
     if total_required_width > 1:
         gauge_width = (1 - (num_gauges - 1) * gap) / num_gauges
     else:
         gauge_width = max_gauge_width
 
-    # Para cada subsistema, adiciona um velocímetro
+    # Para cada subsistema, cria uma nova figura
     for i, subsystem in enumerate(subsystems):
+        fig = go.Figure()
+        
         subsystem_data = data[data['id_subsistema'] == subsystem]
         percentage = subsystem_data[metric_column].iloc[0]  # Get the percentage for the latest date
-        formatted_percentage = "{:.1f}".format(percentage)
+        formatted_percentage = format_decimal(percentage, locale='pt_BR', format="#,##0.0")
 
         bar_color = "#67aeaa"
 
         # Calcula o domínio de x de forma proporcional
-        x_start = i * (gauge_width + gap)
-        x_end = x_start + gauge_width
+        x_start = 0.05  # Começa mais à esquerda
+        x_end = x_start + 0.9  # Ajuste para um gauge maior
 
         # Calculando o tamanho da fonte com base na largura da tela
         font_size = 30  # Valor padrão
-        screen_width = st.query_params.get("width", [1024])[0]  # Obter a largura da tela
+        screen_width = 1024  # Exemplo de largura da tela
         if screen_width < 800:
             font_size = 20  # Para telas pequenas
         elif screen_width < 1200:
@@ -112,7 +114,7 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
 
         # Adiciona o velocímetro ao gráfico
         fig.add_trace(go.Indicator(
-            mode="gauge+number",  # Inclui o número e a diferença
+            mode="gauge",  # Inclui o número e a diferença
             value=percentage,
             number={
                 "valueformat": ".1f",  # Formato do número com uma casa decimal
@@ -121,7 +123,14 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
             },
             title={"text": f"{subsystem}", "font": {"size": font_size}},  # Ajuste do tamanho do título
             gauge={
-                "axis": {"range": [None, 100]},  # Garante que o range vai de 0 a 100
+                "axis": {
+                    "range": [None, 100],  # Garante que o range vai de 0 a 100
+                    "tickmode": "array",  # Usamos ticks customizados
+                    "tickvals": [0, 20, 40, 60, 80, 100],  # Marcas de 20 em 20
+                    "ticktext": ["0", "20", "40", "60", "80", "100"],  # Texto dos ticks
+                    "tickwidth": 2,  # Largura das linhas de tick
+                    "ticks": "outside",  # Coloca os ticks para fora do gauge
+                },
                 "bar": {"color": bar_color},
                 "bgcolor": "#323e47",
                 "steps": [{"range": [0, 100], "color": "#323e47"}]
@@ -129,31 +138,61 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
             domain={'x': [x_start, x_end], 'y': [0, 1]},  # Ajusta a posição com base no índice
         ))
 
-    # Para o Brasil, mostra a média ou um valor geral
+        # Ajusta o layout do gráfico
+        fig.update_layout(
+            annotations=[
+                dict(
+                    x=0.5,  # Centraliza o texto horizontalmente
+                    y=0.43,  # Centraliza o texto verticalmente
+                    text=formatted_percentage+'%',  # Texto a ser mostrado
+                    font=dict(size=font_size, color="gray"),  # Estilo do texto
+                    showarrow=False,  # Não mostra seta
+                )
+            ],
+            title="",
+            grid={'rows': 1, 'columns': 1},
+            showlegend=False,
+            height=400,  # Aumentando a altura para acomodar melhor o gauge
+            width=500,  # Aumentando a largura para dar mais espaço ao velocímetro
+            margin={"l": 20, "r": 20, "t": 0, "b": 0},  # Reduz margens para dar mais espaço aos gráficos
+        )
+
+        figs.append(fig)  # Adiciona a figura à lista
+
+    # Para o Brasil, cria uma figura separada
+    fig_brasil = go.Figure()
+
     sim_percentage = data[sim_column].max()
-    formatted_sim_percentage = "{:.1f}".format(sim_percentage)
+    formatted_sim_percentage = format_decimal(sim_percentage, locale='pt_BR', format="#,##0.0")
 
     sim_bar_color = "#67aeaa"
 
     # Cálculo da posição para o Brasil (último velocímetro)
-    x_start_brasil = 4 * (gauge_width + gap)
-    x_end_brasil = x_start_brasil + gauge_width
+    x_start_brasil = 0.05
+    x_end_brasil = x_start_brasil + 0.9
 
     # Ajustando tamanho de fonte para o Brasil também
     font_size_brasil = font_size  # Mantém o mesmo tamanho de fonte
 
     # Adiciona o velocímetro para o Brasil
-    fig.add_trace(go.Indicator(
-        mode="gauge+number",
+    fig_brasil.add_trace(go.Indicator(
+        mode="gauge",
         value=sim_percentage,
         number={
-                "valueformat": ".1f",  # Formato do número com uma casa decimal
-                "suffix": "%",  # Adiciona o símbolo '%' ao número
-                "font": {"size": font_size_brasil}  # Tamanho do número, ajustado dinamicamente
-            },
+            "valueformat": ".1f",  # Formato do número com uma casa decimal
+            "suffix": "%",  # Adiciona o símbolo '%' ao número
+            "font": {"size": font_size_brasil}  # Tamanho do número, ajustado dinamicamente
+        },
         title={"text": "BRASIL", "font": {"size": font_size_brasil}},  # Ajuste do título para o Brasil
         gauge={
-            "axis": {"range": [None, 100]},
+            "axis": {
+                "range": [None, 100],  # Garante que o range vai de 0 a 100
+                "tickmode": "array",  # Usamos ticks customizados
+                "tickvals": [0, 20, 40, 60, 80, 100],  # Marcas de 20 em 20
+                "ticktext": ["0", "20", "40", "60", "80", "100"],  # Texto dos ticks
+                "tickwidth": 2,  # Largura das linhas de tick
+                "ticks": "outside",  # Coloca os ticks para fora do gauge
+            },            
             "bar": {"color": sim_bar_color},
             "bgcolor": "#323e47",
             "steps": [{"range": [0, 100], "color": "#323e47"}]
@@ -162,15 +201,27 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
     ))
 
     # Ajusta o layout do gráfico
-    fig.update_layout(
-        title="Nível dos reservartórios atual:",
-        grid={'rows': 1, 'columns': 5},
+    fig_brasil.update_layout(
+        annotations=[
+            dict(
+                x=0.5,  # Centraliza o texto horizontalmente
+                y=0.43,  # Centraliza o texto verticalmente
+                text=formatted_sim_percentage+'%',  # Texto a ser mostrado
+                font=dict(size=font_size, color="gray"),  # Estilo do texto
+                showarrow=False,  # Não mostra seta
+            )
+        ],
+        title="",
+        grid={'rows': 1, 'columns': 1},
         showlegend=False,
-        height=350,  # Ajusta a altura para acomodar os velocímetros
-        margin={"l": 0, "r": 0, "t": 30, "b": 0},  # Reduz margens para dar mais espaço aos gráficos
+        height=400,  # Aumentando a altura para acomodar melhor o gauge
+        width=500,  # Aumentando a largura para dar mais espaço ao velocímetro
+        margin={"l": 20, "r": 20, "t": 0, "b":0},  # Reduz margens para dar mais espaço aos gráficos
     )
 
-    return fig
+    figs.append(fig_brasil)  # Adiciona a figura do Brasil à lista
+
+    return figs  # Retorna uma lista de figuras separadas
 
 def ler_data_arquivo():
     try:
@@ -276,10 +327,17 @@ earm_data['ear_data'] = pd.to_datetime(earm_data['ear_data'])
 # Última data disponível
 latest_date = earm_data['ear_data'].max()
 latest_data = earm_data[earm_data['ear_data'] == latest_date]
+st.subheader('Nível dos reservatórios atual:')
 
 # Gráficos de gauge para os subsistemas
 fig_atual_sim = make_subsystem_gauge_charts(latest_data, 'ear_verif_subsistema_percentual', 'verif_max_ratio')
-st.plotly_chart(fig_atual_sim)
+num_figures = len(fig_atual_sim)
+columns = st.columns(num_figures)
+
+# Exibir as figuras nas colunas
+for idx, fig in enumerate(fig_atual_sim):
+    columns[idx].plotly_chart(fig)
+    
 
 st.write("---")
 min_date = earm_data['ear_data'].min().date()
@@ -567,155 +625,156 @@ colors_dict = {
         'NE': '#6b8b89',
         'N': '#a3d5ce'
     }
+with st.spinner('Carregando gráfico...'):
 
-# Iterando pelo subsistema selecionado e criando gráficos individuais (para gráficos abaixo)
-if not agg_data_bottom.empty:
-    subsystem_data_bottom = agg_data_bottom[agg_data_bottom['id_subsistema'] == selected_subsystem_bottom]
+    # Iterando pelo subsistema selecionado e criando gráficos individuais (para gráficos abaixo)
+    if not agg_data_bottom.empty:
+        subsystem_data_bottom = agg_data_bottom[agg_data_bottom['id_subsistema'] == selected_subsystem_bottom]
 
-    if not subsystem_data_bottom.empty:
-        fig_bottom = go.Figure()
+        if not subsystem_data_bottom.empty:
+            fig_bottom = go.Figure()
 
-        # Calcular valores necessários para customdata
-        max_value_bottom = earm_data[earm_data['id_subsistema'] == selected_subsystem_bottom].iloc[-1][f'ear_max_subsistema']
-        remaining_capacity_bottom = max_value_bottom - subsystem_data_bottom['ear_verif_subsistema_mwmes']
+            # Calcular valores necessários para customdata
+            max_value_bottom = earm_data[earm_data['id_subsistema'] == selected_subsystem_bottom].iloc[-1][f'ear_max_subsistema']
+            remaining_capacity_bottom = max_value_bottom - subsystem_data_bottom['ear_verif_subsistema_mwmes']
 
-        # Função para formatar a data conforme a frequência
-        def format_date_based_on_frequency(date, frequency):
-            if frequency == 'Diário':
-                return format_daily_date(date)
-            elif frequency == 'Semanal':
-                return format_week_date(date)
-            elif frequency == 'Mensal':
-                return format_month_date(date)
+            # Função para formatar a data conforme a frequência
+            def format_date_based_on_frequency(date, frequency):
+                if frequency == 'Diário':
+                    return format_daily_date(date)
+                elif frequency == 'Semanal':
+                    return format_week_date(date)
+                elif frequency == 'Mensal':
+                    return format_month_date(date)
+                else:
+                    return str(date)  # Caso a frequência seja outro valor
+
+            # Adicionar `formatted_date` ao customdata
+            subsystem_data_bottom['formatted_date'] = subsystem_data_bottom['ear_data'].apply(lambda x: format_date_based_on_frequency(x, frequency_bottom))
+
+            # Função para aplicar a formatação
+            def format_value(value):
+                # Verifica se o valor é válido (não NaN, por exemplo)
+                return format_decimal(value if pd.notna(value) else 0, locale='pt_BR', format="#,##0.0")
+
+            # Formatar as colunas "Valor" e "Capacidade restante" diretamente usando apply
+            subsystem_data_bottom['formatted_value'] = subsystem_data_bottom['ear_verif_subsistema_mwmes'].apply(format_value)
+            subsystem_data_bottom['formatted_remaining_capacity'] = remaining_capacity_bottom.apply(format_value)
+            subsystem_data_bottom['ear_verif_subsistema_percentual'] = subsystem_data_bottom['ear_verif_subsistema_percentual'].apply(format_value)
+
+            # Barra de valor principal (barra de cima)
+            fig_bottom.add_trace(go.Bar(
+                x=subsystem_data_bottom['ear_data'], 
+                y=subsystem_data_bottom['ear_verif_subsistema_mwmes'],  
+                name='', 
+                marker_color=colors_dict[selected_subsystem_bottom],
+                customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
+                hovertemplate=(
+                    "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
+                    "Valor: %{customdata[2]:.,1f}<br>"  # Exibe o valor formatado
+                    "Capacidade utilizada: %{customdata[0]:.,1f} %<br>"  # Exibe o valor de customdata (percentual)
+                    "Capacidade restante: %{customdata[4]:.,1f}<br>"  # Exibe a capacidade restante formatada
+                ),
+            ))
+
+            # Barra de capacidade restante (barra de baixo)
+            fig_bottom.add_trace(go.Bar(
+                x=subsystem_data_bottom['ear_data'],
+                y=remaining_capacity_bottom,  
+                name='',  
+                marker_color='rgba(0, 0, 0, 0.2)',
+                customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
+                hovertemplate=(
+                    "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
+                    "Valor: %{customdata[2]:.,1f}<br>"  # Exibe a capacidade restante formatada
+                    "Capacidade utilizada: %{customdata[0]:.,1f} %<br>"  # Exibe o valor de customdata (percentual)
+                    "Capacidade restante: %{customdata[4]:.,1f}<br>"  # Exibe o valor da capacidade restante formatado
+                ),
+                showlegend=False,
+            ))
+
+            fig_bottom.update_layout(
+                title=f"EARM - {selected_subsystem_bottom} ({frequency_bottom})",
+                yaxis_title='MWmês',
+                yaxis_tickformat=",.1f",  # Adicionando separador de milhar com ponto
+                barmode='stack',
+                xaxis=dict(tickformat=xaxis_format),  
+                legend=dict(x=0.5, y=-0.2, orientation='h', xanchor='center'),
+                showlegend=False
+            )
+
+            # Ajuste do eixo X para diferentes frequências
+            if frequency_bottom == 'Diário':
+                num_ticks = 5  # Quantidade de ticks desejados
+        
+                # Selecione as datas para exibir no eixo X com base no número de ticks
+                tick_dates = pd.date_range(
+                    start=agg_data_bottom['ear_data'].min(), 
+                    end=agg_data_bottom['ear_data'].max(), 
+                    freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                )
+        
+                # Formatar as datas para o formato desejado
+                formatted_ticks = [format_daily_date(date) for date in tick_dates]
+        
+                # Atualizar o eixo X para usar essas datas formatadas
+                fig_bottom.update_xaxes(
+                    tickmode='array',
+                    tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                    ticktext=formatted_ticks,  # Usar as datas formatadas
+                    tickangle=0
+                )
+            elif frequency_bottom == 'Semanal':
+                num_ticks = 5  # Quantidade de ticks desejados
+        
+                # Selecione as datas para exibir no eixo X com base no número de ticks
+                tick_dates = pd.date_range(
+                    start=agg_data_bottom['ear_data'].min(), 
+                    end=agg_data_bottom['ear_data'].max(), 
+                    freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                )
+        
+                # Formatar as datas para o formato desejado
+                formatted_ticks = [format_week_date(date) for date in tick_dates]
+        
+                # Atualizar o eixo X para usar essas datas formatadas
+                fig_bottom.update_xaxes(
+                    tickmode='array',
+                    tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                    ticktext=formatted_ticks,  # Usar as datas formatadas
+                    tickangle=0
+                )
             else:
-                return str(date)  # Caso a frequência seja outro valor
+                num_ticks = 5  # Quantidade de ticks desejados
+        
+                # Selecione as datas para exibir no eixo X com base no número de ticks
+                tick_dates = pd.date_range(
+                    start=agg_data_bottom['ear_data'].min(), 
+                    end=agg_data_bottom['ear_data'].max(), 
+                    freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                )
+        
+                # Formatar as datas para o formato desejado
+                formatted_ticks = [format_month_date(date) for date in tick_dates]
+        
+                # Atualizar o eixo X para usar essas datas formatadas
+                fig_bottom.update_xaxes(
+                    tickmode='array',
+                    tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                    ticktext=formatted_ticks,  # Usar as datas formatadas
+                    tickangle=0
+                )
 
-        # Adicionar `formatted_date` ao customdata
-        subsystem_data_bottom['formatted_date'] = subsystem_data_bottom['ear_data'].apply(lambda x: format_date_based_on_frequency(x, frequency_bottom))
+            # Atualizar o eixo Y para mostrar valores com uma casa decimal e separadores de milhar
+            fig_bottom.update_layout(
+                hoverlabel=dict(
+                    align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+                ),
+                yaxis_tickformat='.,0f',
+                yaxis_tickmode='array',
+                yaxis_nticks=5
+            )        
+            st.plotly_chart(fig_bottom)
 
-        # Função para aplicar a formatação
-        def format_value(value):
-            # Verifica se o valor é válido (não NaN, por exemplo)
-            return format_decimal(value if pd.notna(value) else 0, locale='pt_BR', format="#,##0.0")
-
-        # Formatar as colunas "Valor" e "Capacidade restante" diretamente usando apply
-        subsystem_data_bottom['formatted_value'] = subsystem_data_bottom['ear_verif_subsistema_mwmes'].apply(format_value)
-        subsystem_data_bottom['formatted_remaining_capacity'] = remaining_capacity_bottom.apply(format_value)
-        subsystem_data_bottom['ear_verif_subsistema_percentual'] = subsystem_data_bottom['ear_verif_subsistema_percentual'].apply(format_value)
-
-        # Barra de valor principal (barra de cima)
-        fig_bottom.add_trace(go.Bar(
-            x=subsystem_data_bottom['ear_data'], 
-            y=subsystem_data_bottom['ear_verif_subsistema_mwmes'],  
-            name='', 
-            marker_color=colors_dict[selected_subsystem_bottom],
-            customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
-            hovertemplate=(
-                "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
-                "Valor: %{customdata[2]:.,1f}<br>"  # Exibe o valor formatado
-                "Capacidade utilizada: %{customdata[0]:.,1f} %<br>"  # Exibe o valor de customdata (percentual)
-                "Capacidade restante: %{customdata[4]:.,1f}<br>"  # Exibe a capacidade restante formatada
-            ),
-        ))
-
-        # Barra de capacidade restante (barra de baixo)
-        fig_bottom.add_trace(go.Bar(
-            x=subsystem_data_bottom['ear_data'],
-            y=remaining_capacity_bottom,  
-            name='',  
-            marker_color='rgba(0, 0, 0, 0.2)',
-            customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
-            hovertemplate=(
-                "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
-                "Valor: %{customdata[2]:.,1f}<br>"  # Exibe a capacidade restante formatada
-                "Capacidade utilizada: %{customdata[0]:.,1f} %<br>"  # Exibe o valor de customdata (percentual)
-                "Capacidade restante: %{customdata[4]:.,1f}<br>"  # Exibe o valor da capacidade restante formatado
-            ),
-            showlegend=False,
-        ))
-
-        fig_bottom.update_layout(
-            title=f"EARM - {selected_subsystem_bottom} ({frequency_bottom})",
-            yaxis_title='MWmês',
-            yaxis_tickformat=",.1f",  # Adicionando separador de milhar com ponto
-            barmode='stack',
-            xaxis=dict(tickformat=xaxis_format),  
-            legend=dict(x=0.5, y=-0.2, orientation='h', xanchor='center'),
-            showlegend=False
-        )
-
-        # Ajuste do eixo X para diferentes frequências
-        if frequency_bottom == 'Diário':
-            num_ticks = 5  # Quantidade de ticks desejados
-    
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            tick_dates = pd.date_range(
-                start=agg_data_bottom['ear_data'].min(), 
-                end=agg_data_bottom['ear_data'].max(), 
-                freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
-            )
-    
-            # Formatar as datas para o formato desejado
-            formatted_ticks = [format_daily_date(date) for date in tick_dates]
-    
-            # Atualizar o eixo X para usar essas datas formatadas
-            fig_bottom.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-        elif frequency_bottom == 'Semanal':
-            num_ticks = 5  # Quantidade de ticks desejados
-    
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            tick_dates = pd.date_range(
-                start=agg_data_bottom['ear_data'].min(), 
-                end=agg_data_bottom['ear_data'].max(), 
-                freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
-            )
-    
-            # Formatar as datas para o formato desejado
-            formatted_ticks = [format_week_date(date) for date in tick_dates]
-    
-            # Atualizar o eixo X para usar essas datas formatadas
-            fig_bottom.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-        else:
-            num_ticks = 5  # Quantidade de ticks desejados
-    
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            tick_dates = pd.date_range(
-                start=agg_data_bottom['ear_data'].min(), 
-                end=agg_data_bottom['ear_data'].max(), 
-                freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
-            )
-    
-            # Formatar as datas para o formato desejado
-            formatted_ticks = [format_month_date(date) for date in tick_dates]
-    
-            # Atualizar o eixo X para usar essas datas formatadas
-            fig_bottom.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-
-        # Atualizar o eixo Y para mostrar valores com uma casa decimal e separadores de milhar
-        fig_bottom.update_layout(
-            hoverlabel=dict(
-                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
-            ),
-            yaxis_tickformat='.,0f',
-            yaxis_tickmode='array',
-            yaxis_nticks=5
-        )        
-        st.plotly_chart(fig_bottom)
-
-else:
-    st.write("Nenhum dado disponível para os filtros selecionados.")
+    else:
+        st.write("Nenhum dado disponível para os filtros selecionados.")
