@@ -232,7 +232,8 @@ else:
             ))
 
         # Mostrar o gráfico
-        st.plotly_chart(fig_tusd_demanda)
+        with st.spinner('Carregando gráfico...'):
+            st.plotly_chart(fig_tusd_demanda)
 
 
     # Gráfico 2: TUSD Encargo
@@ -328,8 +329,8 @@ else:
                 name=entry['text'],
                 showlegend=True
             ))
-
-        st.plotly_chart(fig_tusd_encargo)
+        with st.spinner('Carregando gráfico...'):
+            st.plotly_chart(fig_tusd_encargo)
 
     # Gráfico 3: TUSD Tarifa
     with col3:
@@ -425,7 +426,8 @@ else:
                 name=entry['text'],
                 showlegend=True
             ))
-        st.plotly_chart(fig_tusd_tarifa)
+        with st.spinner('Carregando gráfico...'):
+            st.plotly_chart(fig_tusd_tarifa)
 
 
 st.write("---")
@@ -495,75 +497,75 @@ df_region = region_dfs.get(region)
 # ------------------------------------------------------------
 # Gráfico 1: Variação da Bandeira em um Ano
 df_filtered_ano = df_region[df_region['Ano'] == year]
+with st.spinner('Carregando gráfico...'):
+    if not df_filtered_ano.empty:
+        fig_ano = go.Figure()
 
-if not df_filtered_ano.empty:
-    fig_ano = go.Figure()
+        # Adicionar a variação da bandeira no ano selecionado
+        fig_ano.add_trace(go.Scatter(
+            x=df_filtered_ano['Mes'],
+            y=df_filtered_ano['Bandeira'].cat.codes,  # Utiliza os códigos das categorias
+            mode='lines+markers',
+            name=f"Bandeira {year}",
+            line=dict(color='#67aeaa')
+        ))
 
-    # Adicionar a variação da bandeira no ano selecionado
-    fig_ano.add_trace(go.Scatter(
-        x=df_filtered_ano['Mes'],
-        y=df_filtered_ano['Bandeira'].cat.codes,  # Utiliza os códigos das categorias
-        mode='lines+markers',
-        name=f"Bandeira {year}",
-        line=dict(color='#67aeaa')
-    ))
-
-    # Configuração do gráfico
-    fig_ano.update_layout(
-        title=f"Variação das Bandeiras no Ano {year} - Região {region}",
-        yaxis_title="Bandeira",
-        legend_title="Bandeira",
-        yaxis=dict(
-            tickmode='array',
-            tickvals=list(range(len(bandeira_order))),  # Usando os índices das bandeiras
-            ticktext=bandeira_order,  # Mantém a ordem desejada
-            tickangle=0,
-            categoryorder='array',
-        ),
-        xaxis=dict(
-            tickmode='array',
-            tickvals=list(range(len(df_filtered_ano['Mes']))),
-            ticktext=df_filtered_ano['Mes'].unique()
+        # Configuração do gráfico
+        fig_ano.update_layout(
+            title=f"Variação das Bandeiras no Ano {year} - Região {region}",
+            yaxis_title="Bandeira",
+            legend_title="Bandeira",
+            yaxis=dict(
+                tickmode='array',
+                tickvals=list(range(len(bandeira_order))),  # Usando os índices das bandeiras
+                ticktext=bandeira_order,  # Mantém a ordem desejada
+                tickangle=0,
+                categoryorder='array',
+            ),
+            xaxis=dict(
+                tickmode='array',
+                tickvals=list(range(len(df_filtered_ano['Mes']))),
+                ticktext=df_filtered_ano['Mes'].unique()
+            )
         )
-    )
-    st.plotly_chart(fig_ano)
-else:
-    st.write(f"Nenhum dado encontrado para o ano {year} na região {region}.")
+        st.plotly_chart(fig_ano)
+    else:
+        st.write(f"Nenhum dado encontrado para o ano {year} na região {region}.")
 
 # ------------------------------------------------------------
 # Gráfico 2: Variação das Bandeiras no Mês Selecionado
 df_month_filtered = df_region[df_region['Mes'] == month]
+with st.spinner('Carregando gráfico...'):
+    if not df_month_filtered.empty:
+        fig_mes = go.Figure()
 
-if not df_month_filtered.empty:
-    fig_mes = go.Figure()
+        # Adicionando a variação das bandeiras no mês selecionado
+        fig_mes.add_trace(go.Scatter(
+            x=df_month_filtered['Ano'],  # Usando os anos reais no eixo X
+            y=df_month_filtered['Bandeira'].cat.codes,  # Usando os códigos das categorias
+            mode='lines+markers',
+            name=f"Bandeira {month}",
+            line=dict(color='#67aeaa')
+        ))
 
-    # Adicionando a variação das bandeiras no mês selecionado
-    fig_mes.add_trace(go.Scatter(
-        x=df_month_filtered['Ano'],  # Usando os anos reais no eixo X
-        y=df_month_filtered['Bandeira'].cat.codes,  # Usando os códigos das categorias
-        mode='lines+markers',
-        name=f"Bandeira {month}",
-        line=dict(color='#67aeaa')
-    ))
-
-    # Configuração do gráfico
-    fig_mes.update_layout(
-        title=f"Variação das Bandeiras no mês de {month} - Região {region}",
-        yaxis_title="Bandeira",
-        legend_title="Ano",
-        yaxis=dict(
-            tickmode='array',
-            tickvals=list(range(len(bandeira_order))),  # Usando os índices das bandeiras
-            ticktext=bandeira_order,  # Mantém a ordem desejada
-            tickangle=0,
-            categoryorder='array',
-        ),
-        xaxis=dict(
-            tickmode='array',
-            tickvals=df_month_filtered['Ano'].unique(),  # Agora usando os anos reais no eixo X
-            ticktext=df_month_filtered['Ano'].unique(),  # Garantir que os anos apareçam corretamente
+        # Configuração do gráfico
+        fig_mes.update_layout(
+            title=f"Variação das Bandeiras no mês de {month} - Região {region}",
+            yaxis_title="Bandeira",
+            legend_title="Ano",
+            yaxis=dict(
+                tickmode='array',
+                tickvals=list(range(len(bandeira_order))),  # Usando os índices das bandeiras
+                ticktext=bandeira_order,  # Mantém a ordem desejada
+                tickangle=0,
+                categoryorder='array',
+            ),
+            xaxis=dict(
+                tickmode='array',
+                tickvals=df_month_filtered['Ano'].unique(),  # Agora usando os anos reais no eixo X
+                ticktext=df_month_filtered['Ano'].unique(),  # Garantir que os anos apareçam corretamente
+            )
         )
-    )
-    st.plotly_chart(fig_mes)
-else:
-    st.write(f"Nenhum dado encontrado para o mês {month} na região {region}.")
+        st.plotly_chart(fig_mes)
+    else:
+        st.write(f"Nenhum dado encontrado para o mês {month} na região {region}.")
