@@ -238,7 +238,7 @@ else:
 
     # Gráfico 2: TUSD Encargo
     with col2:
-        postos = ['Única', 'Ponta', 'Fora ponta']
+        postos = ['Ponta', 'Fora ponta']
         bars_data = []
         legend_entries = []
         fig_tusd_encargo = go.Figure()
@@ -334,7 +334,7 @@ else:
 
     # Gráfico 3: TUSD Tarifa
     with col3:
-        postos = ['Única', 'Ponta', 'Fora ponta']
+        postos = ['Ponta', 'Fora ponta']
         bars_data = []
         legend_entries = []
         fig_tusd_tarifa = go.Figure()
@@ -499,6 +499,9 @@ df_region = region_dfs.get(region)
 df_filtered_ano = df_region[df_region['Ano'] == year]
 with st.spinner('Carregando gráfico...'):
     if not df_filtered_ano.empty:
+        # Filtrando valores 0 ou NaN
+        df_filtered_ano = df_filtered_ano[df_filtered_ano['Bandeira'].notna() & (df_filtered_ano['Bandeira'] != 0)]
+
         fig_ano = go.Figure()
 
         # Adicionar a variação da bandeira no ano selecionado
@@ -537,6 +540,9 @@ with st.spinner('Carregando gráfico...'):
 df_month_filtered = df_region[df_region['Mes'] == month]
 with st.spinner('Carregando gráfico...'):
     if not df_month_filtered.empty:
+        # Filtrando valores 0 ou NaN
+        df_month_filtered = df_month_filtered[df_month_filtered['Bandeira'].notna() & (df_month_filtered['Bandeira'] != 0)]
+
         fig_mes = go.Figure()
 
         # Adicionando a variação das bandeiras no mês selecionado
