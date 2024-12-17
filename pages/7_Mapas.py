@@ -27,13 +27,59 @@ st.markdown("""
         }
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
-        }"""
+        }
+                    h1{
+            text-transform: uppercase; 
+            font-weight: 200;
+            letter-spacing: 1px;
+            margin-bottom: 20px; 
+        }
+        .stDateInput input {
+            width: 50%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+        }
+                    /* Removendo a borda ao focar no campo */
+        .stDateInput input:focus {
+            width: 50%;
+            outline: none;
+            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDownloadButton>button {
+            background-color: #67AEAA; /* Cor de fundo */
+            color: white; /* Cor do texto */
+            border: 1px solid #67AEAA; /* Cor da borda */
+            border-radius: 8px; /* Bordas arredondadas */
+            padding: 10px 20px; /* Espaçamento interno */
+            font-size: 16px; /* Tamanho da fonte */
+            cursor: pointer; /* Mostrar cursor de clique */
+            transition: background-color 0.3s ease; /* Transição suave para cor de fundo */
+        }
+
+        /* Efeito de foco no botão */
+        .stDownloadButton>button:hover {
+            background-color: #FFFFFF; /* Mudar cor de fundo ao passar o mouse */
+            border-color: #56A798; /* Mudar cor da borda */
+        }
+
+        .stDownloadButton>button:focus {
+            outline: none; /* Remover contorno ao focar */
+            border: 2px solid #56A798; /* Cor da borda quando focado */
+        }
+        hr {
+            border: 0;
+            height: 2px;
+            background-color: #67AEAA;  /* Cor do tracinho */
+        }
+"""
         f'''.stButton>button {{
         border-radius: 50%;
         width: 40px;
         height: 40px;
         font-size: 24px;
         }}'''
+        
         """#GithubIcon {visibility: hidden;}
         #ForkIcon {visibility: hidden;}
         [data-testid="stForm"] {border: 0px}
@@ -260,7 +306,6 @@ if 'selected_filters' not in st.session_state:
     st.session_state.selected_filters = [{"data": "", "tipo": "", "forecast_data": ""}]
 
 with col4:
-    st.write('')  
     st.write('')  
     add_button_clicked = st.button("➕")
     if add_button_clicked and len(st.session_state.selected_filters) < 4:
