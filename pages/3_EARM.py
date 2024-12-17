@@ -32,6 +32,51 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        h1{
+            text-transform: uppercase; 
+            font-weight: 200;
+            letter-spacing: 1px;
+            margin-bottom: 20px; 
+        }
+        .stDateInput input {
+            width: 50%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+        }
+                    /* Removendo a borda ao focar no campo */
+        .stDateInput input:focus {
+            width: 50%;
+            outline: none;
+            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDownloadButton>button {
+            background-color: #67AEAA; /* Cor de fundo */
+            color: white; /* Cor do texto */
+            border: 1px solid #67AEAA; /* Cor da borda */
+            border-radius: 8px; /* Bordas arredondadas */
+            padding: 10px 20px; /* Espaçamento interno */
+            font-size: 16px; /* Tamanho da fonte */
+            cursor: pointer; /* Mostrar cursor de clique */
+            transition: background-color 0.3s ease; /* Transição suave para cor de fundo */
+        }
+
+        /* Efeito de foco no botão */
+        .stDownloadButton>button:hover {
+            background-color: #FFFFFF; /* Mudar cor de fundo ao passar o mouse */
+            border-color: #56A798; /* Mudar cor da borda */
+        }
+
+        .stDownloadButton>button:focus {
+            outline: none; /* Remover contorno ao focar */
+            border: 2px solid #56A798; /* Cor da borda quando focado */
+        }
+        hr {
+            border: 0;
+            height: 2px;
+            background-color: #67AEAA;  /* Cor do tracinho */
+        }
+
         [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
         footer {visivility: hidden;}
@@ -307,19 +352,24 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 earm_data = pd.read_csv('EARM_atualizado.csv')
 
 # Carregar os dados
-coltitle, coldownload= st.columns([5, 1])
+coltitle, coldownload= st.columns([8, 1])
 with coltitle:
     st.title("Reservatórios")
 
 with coldownload:
-    csv = earm_data.to_csv(index=False)
     st.write("")
     st.write("")
+    import io
+    excel_file = io.BytesIO()
+    with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+        earm_data.to_excel(writer, index=False, sheet_name='Sheet1')
+
+    # Fazendo o download do arquivo Excel
     st.download_button(
-        label= "Download",
-        data= csv,
-        file_name= f'Dados_EARM_({data_atual})',
-        mime="text/csv",
+        label="DOWNLOAD",
+        data=excel_file.getvalue(),
+        file_name=f'Dados_EARM_({data_atual}).xlsx',  # Certifique-se de definir a variável data_atual
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 earm_data['ear_data'] = pd.to_datetime(earm_data['ear_data'])
@@ -349,7 +399,7 @@ end_date_slider = max_date
 
 # Selecione o intervalo de datas usando um slider
 start_date_slider, end_date_slider = st.slider(
-    "Selecione o intervalo de datas",
+    "**Selecione o intervalo de datas**",
     min_value=min_date,
     max_value=max_date,
     value=(start_date_default, end_date_slider),
@@ -360,19 +410,19 @@ start_date_slider, end_date_slider = st.slider(
 # Filtros para o resto da página
 col3, col4 , col1, col2= st.columns([1, 1, 1, 1])
 with col1:
-    frequency = st.radio("Frequência", ['Diário', 'Semanal', 'Mensal'], index=2)  # Começar com "Mensal" selecionado
+    frequency = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2)  # Começar com "Mensal" selecionado
     metric = 'MWmês'
 
 with col2:
     selected_subsystems = st.multiselect(
-        "Selecione os subsistemas", placeholder= 'Escolha uma opção',
+        "**Selecione os submercados**", placeholder= 'Escolha uma opção',
         options=['SE/CO', 'S', 'NE', 'N'],
         default=['SE/CO', 'S', 'NE', 'N']  # Seleção padrão
     )
 with col3:
-    start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
+    start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
 with col4:
-    end_date_input = st.date_input("Fim", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
+    end_date_input = st.date_input("**Fim**", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
 
 
 # Filtragem por data
@@ -568,7 +618,7 @@ end_date_slider_bottom = max_date_bottom
 
 # Selecione o intervalo de datas usando um slider
 start_date_slider_bottom, end_date_slider_bottom = st.slider(
-    "Selecione o intervalo de datas",
+    "**Selecione o intervalo de datas**",
     min_value=min_date_bottom,
     max_value=max_date_bottom,
     value=(start_date_default_bottom, end_date_slider_bottom),
@@ -580,19 +630,19 @@ start_date_slider_bottom, end_date_slider_bottom = st.slider(
 
 col3, col4 , col1, col2= st.columns([1, 1, 1, 1])
 with col1:
-    frequency_bottom = st.radio("Frequência", ['Diário', 'Semanal', 'Mensal'], index=2, key="bottom_freq")  # Começar com "Mensal" selecionado
+    frequency_bottom = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2, key="bottom_freq")  # Começar com "Mensal" selecionado
     metric = 'MWmês'
 
 with col2:
     selected_subsystem_bottom = st.radio(
-        "Selecione um subsistema",
+        "**Selecione um submercado**",
         options=['SE/CO', 'S', 'NE', 'N'],
         index=0,
         key="bottom_sub"
     )
 with col3:
     start_date_input_bottom = st.date_input(
-        "Início", 
+        "**Início**", 
         min_value=min_date_bottom, 
         max_value=max_date_bottom, 
         value=start_date_slider_bottom, 
@@ -601,7 +651,7 @@ with col3:
     )
 with col4:
     end_date_input_bottom = st.date_input(
-        "Fim", 
+        "**Fim**", 
         min_value=min_date_bottom, 
         max_value=max_date_bottom, 
         value=end_date_slider_bottom, 
