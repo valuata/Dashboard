@@ -62,6 +62,62 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+                    h1{
+            text-transform: uppercase; 
+            font-weight: 200;
+            letter-spacing: 1px;
+            margin-bottom: 20px; 
+        }
+        .stDateInput input {
+            width: 50%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+        }
+                    /* Removendo a borda ao focar no campo */
+        .stDateInput input:focus {
+            width: 50%;
+            outline: none;
+            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDownloadButton>button {
+            background-color: #67AEAA; /* Cor de fundo */
+            color: white; /* Cor do texto */
+            border: 1px solid #67AEAA; /* Cor da borda */
+            border-radius: 8px; /* Bordas arredondadas */
+            padding: 10px 20px; /* Espaçamento interno */
+            font-size: 16px; /* Tamanho da fonte */
+            cursor: pointer; /* Mostrar cursor de clique */
+            transition: background-color 0.3s ease; /* Transição suave para cor de fundo */
+        }
+
+        /* Efeito de foco no botão */
+        .stDownloadButton>button:hover {
+            background-color: #FFFFFF; /* Mudar cor de fundo ao passar o mouse */
+            border-color: #56A798; /* Mudar cor da borda */
+        }
+
+        .stDownloadButton>button:focus {
+            outline: none; /* Remover contorno ao focar */
+            border: 2px solid #56A798; /* Cor da borda quando focado */
+        }
+        hr {
+            border: 0;
+            height: 2px;
+            background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        div[data-baseweb="select"] {
+            width: 60%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+            padding: 5px;
+        }
+        div[class="st-an st-ao st-ap st-aq st-ak st-ar st-am st-as st-at st-au st-av st-aw st-ax st-ay st-az st-b0 st-b1 st-b2 st-b3 st-b4 st-b5 st-b6 st-cr st-cs st-ct st-cu st-bb st-bc"] {
+            border: none;
+            transition-property: none;
+            transition-duration: 0s;
+        }
         [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
         footer {visivility: hidden;}
@@ -94,18 +150,18 @@ def formatar_valor_brl(valor):
     return format_currency(valor, 'BRL', locale='pt_BR')
 # Filtros de Submercado, Mês, Semana e Tipo de Energia
 with col1:
-    submercado_selecionado = st.selectbox("Submercado", submercados)
+    submercado_selecionado = st.selectbox("**Submercado**", submercados)
     
 with col2:
     meses = all_data['MÊS'].unique()
-    mes_selecionado = st.selectbox("Mês", meses)
+    mes_selecionado = st.selectbox("**Mês**", meses)
 
 with col3:
     semanas = all_data[(all_data['MÊS'] == mes_selecionado)]['SEMANA'].unique()
-    semana_selecionada = st.selectbox("Semana", semanas)
+    semana_selecionada = st.selectbox("**Semana**", semanas)
 
 with col4:
-    tipo_energia = st.selectbox("Tipo de energia", ['Convencional', 'Incentivada'])
+    tipo_energia = st.selectbox("**Tipo de energia**", ['Convencional', 'Incentivada'])
 
 # Filtro de dados com base nos filtros selecionados
 filtered_data = all_data[(all_data['MÊS'] == mes_selecionado) & 
@@ -251,7 +307,7 @@ st.write("---")
 st.subheader("Histórico de preços de energia para o ano selecionado")
 
 # O ano selecionado é o ano para o qual queremos ver as previsões
-ano_selecionado = st.selectbox("Selecione o ano para ver a evolução das previsões", 
+ano_selecionado = st.selectbox("**Selecione o ano para ver a evolução das previsões**", 
                                 sorted(all_data['DIA'].dt.year.unique(), reverse=True))
 
 # Filtrando os dados do ano selecionado
