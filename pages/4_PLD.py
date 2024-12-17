@@ -31,6 +31,62 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        h1{
+            text-transform: uppercase; 
+            font-weight: 200;
+            letter-spacing: 1px;
+            margin-bottom: 20px; 
+        }
+        .stDateInput input {
+            width: 50%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+        }
+                    /* Removendo a borda ao focar no campo */
+        .stDateInput input:focus {
+            width: 50%;
+            outline: none;
+            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDownloadButton>button {
+            background-color: #67AEAA; /* Cor de fundo */
+            color: white; /* Cor do texto */
+            border: 1px solid #67AEAA; /* Cor da borda */
+            border-radius: 8px; /* Bordas arredondadas */
+            padding: 10px 20px; /* Espaçamento interno */
+            font-size: 16px; /* Tamanho da fonte */
+            cursor: pointer; /* Mostrar cursor de clique */
+            transition: background-color 0.3s ease; /* Transição suave para cor de fundo */
+        }
+
+        /* Efeito de foco no botão */
+        .stDownloadButton>button:hover {
+            background-color: #FFFFFF; /* Mudar cor de fundo ao passar o mouse */
+            border-color: #56A798; /* Mudar cor da borda */
+        }
+
+        .stDownloadButton>button:focus {
+            outline: none; /* Remover contorno ao focar */
+            border: 2px solid #56A798; /* Cor da borda quando focado */
+        }
+        hr {
+            border: 0;
+            height: 2px;
+            background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        div[data-baseweb="select"] {
+            width: 80%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+            padding: 5px;
+        }
+        div[class="st-an st-ao st-ap st-aq st-ak st-ar st-am st-as st-at st-au st-av st-aw st-ax st-ay st-az st-b0 st-b1 st-b2 st-b3 st-b4 st-b5 st-b6 st-cr st-cs st-ct st-cu st-bb st-bc"] {
+            border: none;
+            transition-property: none;
+            transition-duration: 0s;
+        }
         [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
         footer {visivility: hidden;}
@@ -55,7 +111,7 @@ def format_hour_date(date):
 # Load the data
 pld_data = pd.read_csv("PLD Horário Comercial Historico.csv")
 
-coltitle,  coldownload= st.columns([5, 1])
+coltitle,  coldownload= st.columns([8, 1])
 with coltitle:
     st.title("PLD")
 
@@ -64,7 +120,7 @@ with coldownload:
     st.write("")
     st.write("")
     st.download_button(
-        label= "Download",
+        label= "DOWNLOAD",
         data= csv,
         file_name= f'Dados_PLD',
         mime="text/csv",
@@ -93,7 +149,7 @@ start_date_default = max_date.replace(year=max_date.year - 5, month=1, day=1)
 
 # Date Range Slider
 start_date_slider, end_date_slider = st.slider(
-    "Selecione o intervalo de datas",
+    "**Selecione o intervalo de datas**",
     min_value=min_date,
     max_value=max_date,
     value=(start_date_default, end_date_default),
@@ -112,13 +168,13 @@ submarket_options = [sub for sub in submarket_order if sub in pld_data.index.get
 # Display date inputs side by side using st.columns()
 col3, col4, col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
-    period = st.radio("Frequência", ('Horário', 'Diário', 'Semanal', 'Mensal'), index=3)  # Default to 'Mensal'
+    period = st.radio("**Frequência**", ('Horário', 'Diário', 'Semanal', 'Mensal'), index=3)  # Default to 'Mensal'
 with col2:
-    selected_submarkets = st.multiselect("Selecione os Submercados", submarket_options, default=submarket_options, placeholder= 'Escolha uma opção')
+    selected_submarkets = st.multiselect("**Selecione os Submercados**", submarket_options, default=submarket_options, placeholder= 'Escolha uma opção')
 with col3:
-    start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
+    start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
 with col4:
-    end_date_input = st.date_input("Fim", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
+    end_date_input = st.date_input("**Fim**", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
 
 # Apply the selected date range
 start_date = pd.to_datetime(start_date_input)
@@ -346,7 +402,7 @@ end_date_slider_bottom = max_date_bottom
 
 # Selecione o intervalo de datas usando um slider
 start_date_slider_bottom, end_date_slider_bottom = st.slider(
-    "Selecione o intervalo de datas",
+    "**Selecione o intervalo de datas**",
     min_value=min_date_bottom,
     max_value=max_date_bottom,
     value=(start_date_default_bottom, end_date_slider_bottom),
@@ -358,18 +414,18 @@ start_date_slider_bottom, end_date_slider_bottom = st.slider(
 
 col3, col4 , col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
-    frequency_bottom = st.radio("Frequência", ['Semanal', 'Mensal'], index=1, key="bottom_freq")  # Começar com "Mensal" selecionado
+    frequency_bottom = st.radio("**Frequência**", ['Semanal', 'Mensal'], index=1, key="bottom_freq")  # Começar com "Mensal" selecionado
 
 with col2:
     selected_subsystem_bottom = st.radio(
-        "Submercado",
+        "**Submercado**",
         options=['SE/CO', 'S', 'NE', 'N'],
         index=0,
         key="bottom_sub"
     )
 with col3:
     start_date_input_bottom = st.date_input(
-        "Início", 
+        "**Início**", 
         min_value=min_date, 
         max_value=max_date, 
         value=start_date_slider_bottom, 
@@ -378,7 +434,7 @@ with col3:
     )
 with col4:
     end_date_input_bottom = st.date_input(
-        "Fim", 
+        "**Fim**", 
         min_value=min_date, 
         max_value=max_date, 
         value=end_date_slider_bottom, 
