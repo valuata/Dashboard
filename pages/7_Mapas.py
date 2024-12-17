@@ -72,6 +72,20 @@ st.markdown("""
             height: 2px;
             background-color: #67AEAA;  /* Cor do tracinho */
         }
+        div[data-baseweb="select"] {
+            width: 60%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+            padding: 5px;
+        }
+        div[class="st-an st-ao st-ap st-aq st-ak st-ar st-am st-as st-at st-au st-av st-aw st-ax st-ay st-az st-b0 st-b1 st-b2 st-b3 st-b4 st-b5 st-b6 st-cr st-cs st-ct st-cu st-bb st-bc"] {
+            border: none;
+            transition-property: none;
+            transition-duration: 0s;
+        }
+
+
 """
         f'''.stButton>button {{
         border-radius: 50%;
