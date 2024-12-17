@@ -30,6 +30,62 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        h1{
+            text-transform: uppercase; 
+            font-weight: 200;
+            letter-spacing: 1px;
+            margin-bottom: 20px; 
+        }
+        .stDateInput input {
+            width: 50%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+        }
+                    /* Removendo a borda ao focar no campo */
+        .stDateInput input:focus {
+            width: 50%;
+            outline: none;
+            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDownloadButton>button {
+            background-color: #67AEAA; /* Cor de fundo */
+            color: white; /* Cor do texto */
+            border: 1px solid #67AEAA; /* Cor da borda */
+            border-radius: 8px; /* Bordas arredondadas */
+            padding: 10px 20px; /* Espaçamento interno */
+            font-size: 16px; /* Tamanho da fonte */
+            cursor: pointer; /* Mostrar cursor de clique */
+            transition: background-color 0.3s ease; /* Transição suave para cor de fundo */
+        }
+
+        /* Efeito de foco no botão */
+        .stDownloadButton>button:hover {
+            background-color: #FFFFFF; /* Mudar cor de fundo ao passar o mouse */
+            border-color: #56A798; /* Mudar cor da borda */
+        }
+
+        .stDownloadButton>button:focus {
+            outline: none; /* Remover contorno ao focar */
+            border: 2px solid #56A798; /* Cor da borda quando focado */
+        }
+        hr {
+            border: 0;
+            height: 2px;
+            background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        div[data-baseweb="select"] {
+            width: 80%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+            padding: 5px;
+        }
+        div[class="st-an st-ao st-ap st-aq st-ak st-ar st-am st-as st-at st-au st-av st-aw st-ax st-ay st-az st-b0 st-b1 st-b2 st-b3 st-b4 st-b5 st-b6 st-cr st-cs st-ct st-cu st-bb st-bc"] {
+            border: none;
+            transition-property: none;
+            transition-duration: 0s;
+        }
         [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
         footer {visivility: hidden;}
@@ -45,19 +101,24 @@ locale = Locale('pt', 'BR')
 tarifa['Início Vigência'] = pd.to_datetime(tarifa['Início Vigência'])
 tarifa['Fim Vigência'] = pd.to_datetime(tarifa['Fim Vigência'])
 
-coltitle, coldownload = st.columns([5, 1])
+coltitle, coldownload= st.columns([8, 1])
 with coltitle:
     st.title("Tarifas")
 
 with coldownload:
-    csv = tarifa.to_csv(index=False)
     st.write("")
     st.write("")
+    import io
+    excel_file = io.BytesIO()
+    with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+        tarifa.to_excel(writer, index=False, sheet_name='Sheet1')
+
+    # Fazendo o download do arquivo Excel
     st.download_button(
-        label="Download",
-        data=csv,
-        file_name=f'Dados_Tarifas.csv',
-        mime="text/csv",
+        label="DOWNLOAD",
+        data=excel_file.getvalue(),
+        file_name=f'Dados_Tarifas.xlsx',  # Certifique-se de definir a variável data_atual
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 # Layout de filtros lado a lado
@@ -65,7 +126,7 @@ col1, col2, col3, col4 = st.columns(4)
 
 # Filtro de Distribuidora (sempre disponível)
 with col1:
-    selected_sigla = st.selectbox("Distribuidora", tarifa['Sigla'].unique())
+    selected_sigla = st.selectbox("**Distribuidora**", tarifa['Sigla'].unique())
 
 # Filtro de Data de Reajuste (disponível somente se uma distribuidora for selecionada)
 with col2:
@@ -74,7 +135,7 @@ with col2:
         sorted_dates = tarifa[tarifa['Sigla'] == selected_sigla]['Início Vigência'].dropna().unique()
         sorted_dates = sorted(sorted_dates)  # Ordenando em ordem crescente
         sorted_dates_str = [date.strftime('%d/%m/%Y') for date in sorted_dates]
-        selected_date = st.selectbox("Data do Reajuste", sorted_dates_str, index=len(sorted_dates_str)-1)
+        selected_date = st.selectbox("**Data do Reajuste**", sorted_dates_str, index=len(sorted_dates_str)-1)
         selected_index = sorted_dates_str.index(selected_date)  # Índice da data selecionada
         if selected_index > 0:
             previous_date = sorted_dates_str[selected_index - 1]  # Valor anterior
@@ -90,7 +151,7 @@ with col3:
         filtered_tarifa = tarifa[(tarifa['Sigla'] == selected_sigla) & 
                                  (tarifa['Início Vigência'].dt.strftime('%d/%m/%Y') == selected_date)]
         available_subgrupos = filtered_tarifa['Subgrupo'].unique()
-        selected_subgrupo = st.selectbox("Subgrupo", available_subgrupos)
+        selected_subgrupo = st.selectbox("**Subgrupo**", available_subgrupos)
     else:
         selected_subgrupo = None
 
@@ -102,7 +163,7 @@ with col4:
                                  (tarifa['Início Vigência'].dt.strftime('%d/%m/%Y') == selected_date) & 
                                  (tarifa['Subgrupo'] == selected_subgrupo)]
         available_modalidades = filtered_tarifa['Modalidade'].unique()
-        selected_modalidade = st.selectbox("Modalidade", available_modalidades)
+        selected_modalidade = st.selectbox("**Modalidade**", available_modalidades)
     else:
         selected_modalidade = None
 tarifa['Início Vigência'] = pd.to_datetime(tarifa['Início Vigência']).dt.strftime('%d/%m/%Y')
@@ -469,14 +530,14 @@ col7, col8, col9 = st.columns(3)
 
 # Filtro para escolher a região
 with col7:
-    region = st.radio("Região", ["SE/CO", "S", "NE", "N"])
+    region = st.radio("**Região**", ["SE/CO", "S", "NE", "N"])
 
 # Filtro para escolher o ano
 with col8:
-    year = st.selectbox("Ano", list(range(2014, 2025)))
+    year = st.selectbox("**Ano**", list(range(2014, 2025)))
 
 with col9:
-    month = st.selectbox("Mês", ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'])
+    month = st.selectbox("**Mês**", ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'])
 
 
 
@@ -494,7 +555,6 @@ df_region = region_dfs.get(region)
 
 # Filtro para escolher o mês (usado no gráfico 2)
 
-# ------------------------------------------------------------
 # Gráfico 1: Variação da Bandeira em um Ano
 df_filtered_ano = df_region[df_region['Ano'] == year]
 with st.spinner('Carregando gráfico...'):
