@@ -32,6 +32,62 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        h1{
+            text-transform: uppercase; 
+            font-weight: 200;
+            letter-spacing: 1px;
+            margin-bottom: 20px; 
+        }
+        .stDateInput input {
+            width: 50%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+        }
+                    /* Removendo a borda ao focar no campo */
+        .stDateInput input:focus {
+            width: 50%;
+            outline: none;
+            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDownloadButton>button {
+            background-color: #67AEAA; /* Cor de fundo */
+            color: white; /* Cor do texto */
+            border: 1px solid #67AEAA; /* Cor da borda */
+            border-radius: 8px; /* Bordas arredondadas */
+            padding: 10px 20px; /* Espaçamento interno */
+            font-size: 16px; /* Tamanho da fonte */
+            cursor: pointer; /* Mostrar cursor de clique */
+            transition: background-color 0.3s ease; /* Transição suave para cor de fundo */
+        }
+
+        /* Efeito de foco no botão */
+        .stDownloadButton>button:hover {
+            background-color: #FFFFFF; /* Mudar cor de fundo ao passar o mouse */
+            border-color: #56A798; /* Mudar cor da borda */
+        }
+
+        .stDownloadButton>button:focus {
+            outline: none; /* Remover contorno ao focar */
+            border: 2px solid #56A798; /* Cor da borda quando focado */
+        }
+        hr {
+            border: 0;
+            height: 2px;
+            background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        div[data-baseweb="select"] {
+            width: 80%;
+            border: 1px solid #67AEAA;
+            color: #67AEAA;
+            border-radius: 8px;  /* Arredondando a borda */
+            padding: 5px;
+        }
+        div[class="st-an st-ao st-ap st-aq st-ak st-ar st-am st-as st-at st-au st-av st-aw st-ax st-ay st-az st-b0 st-b1 st-b2 st-b3 st-b4 st-b5 st-b6 st-cr st-cs st-ct st-cu st-bb st-bc"] {
+            border: none;
+            transition-property: none;
+            transition-duration: 0s;
+        }
         #GithubIcon {visibility: hidden;}
         #ForkIcon {visibility: hidden;}
         [data-testid="stForm"] {border: 0px}
@@ -375,19 +431,23 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 ena_data = pd.read_csv("Ena_atualizado.csv")
 
 # Carregar os dados
-coltitle, coldownload= st.columns([5, 1])
+coltitle, coldownload= st.columns([8, 1])
 with coltitle:
-    st.title("ENA - Energia Natural Afluente")
+    st.title("ENA")
 
 with coldownload:
-    csv = ena_data.to_csv(index=False)
     st.write("")
-    st.write("")
+    import io
+    excel_file = io.BytesIO()
+    with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+        ena_data.to_excel(writer, index=False, sheet_name='Sheet1')
+
+    # Fazendo o download do arquivo Excel
     st.download_button(
-        label= "Download",
-        data= csv,
-        file_name= f'Dados_ENA_({data_atual})',
-        mime="text/csv",
+        label="DOWNLOAD",
+        data=excel_file.getvalue(),
+        file_name=f'Dados_ENA_({data_atual}).xlsx',  # Certifique-se de definir a variável data_atual
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 monthly_data = pd.read_csv('Mlt_atualizado.csv')
@@ -400,7 +460,7 @@ col1, col2 = st.columns(2)
 
 # Filtro principal: ENA BRUTA ou ENA ARMAZENÁVEL
 with col1:
-    ena_type = st.selectbox("ENA", ['ENA Bruta', 'ENA Armazenável'])
+    ena_type = st.selectbox("**ENA**", ['ENA Bruta', 'ENA Armazenável'])
 
 # Mapeamento das opções selecionadas para a coluna do DataFrame
 metric_column = f"ena_{'bruta' if ena_type == 'ENA Bruta' else 'armazenavel'}_regiao_mwmed"
@@ -412,7 +472,7 @@ max_date = ena_data['ena_data'].max().date()
 start_date_default = max_date.replace(year=max_date.year - 5, month=1, day=1)
 
 start_date, end_date = st.slider(
-    "Selecione o período", 
+    "**Selecione o período**", 
     min_value=min_date, 
     max_value=max_date, 
     value=(start_date_default, max_date), 
@@ -420,19 +480,19 @@ start_date, end_date = st.slider(
 )
 col3, col4 , col1, col2= st.columns([1, 1, 1, 1])
 with col1:
-    frequency = st.radio("Frequência", ['Diário', 'Semanal', 'Mensal'], index=2)  # Definido como 'Mensal' por padrão
+    frequency = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2)  # Definido como 'Mensal' por padrão
     metric = 'MWmed'
 
 with col2:
     selected_subsystems = st.multiselect(
-        "Subsistemas",
+        "**Subsmercados**",
         options=['SE/CO', 'S', 'NE', 'N'],
         default=['SE/CO', 'S', 'NE', 'N'], placeholder= 'Escolha uma opção'  # Seleção padrão
     )
 with col3:
-    start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date, format="DD/MM/YYYY")
+    start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date, format="DD/MM/YYYY")
 with col4:
-    end_date_input = st.date_input("Fim", min_value=min_date, max_value=max_date, value=end_date, format="DD/MM/YYYY")
+    end_date_input = st.date_input("**Fim**", min_value=min_date, max_value=max_date, value=end_date, format="DD/MM/YYYY")
 
 
 # Filtrando os dados com base nas seleções de data
@@ -605,7 +665,7 @@ max_date = ena_data['ena_data'].max().date()
 start_date_default = max_date.replace(year=max_date.year - 5, month=1, day=1)
 
 start_date_hist, end_date_hist = st.slider(
-    "Selecione o período do gráfico de histórico", 
+    "**Selecione o período do gráfico de histórico**", 
     min_value=min_date, 
     max_value=max_date, 
     value=(start_date_default, max_date), 
@@ -617,12 +677,12 @@ colmin, colmax, col2, col1 = st.columns(4)
 
 # Filtro de subsistema para histórico
 with colmin:
-    start_date_input = st.date_input("Início", min_value=min_date, max_value=max_date, value=start_date_hist, format="DD/MM/YYYY", key="start_date_input_bottom")
+    start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date_hist, format="DD/MM/YYYY", key="start_date_input_bottom")
 with colmax:
-    end_date_input = st.date_input("Fim", min_value=min_date, max_value=max_date, value=end_date_hist, format="DD/MM/YYYY", key="end_date_input_bottom")
+    end_date_input = st.date_input("**Fim**", min_value=min_date, max_value=max_date, value=end_date_hist, format="DD/MM/YYYY", key="end_date_input_bottom")
 with col1:
     selected_subsystem_max_min = st.radio(
-        "Subsistema",
+        "**Submercados**",
         options=['SE/CO', 'S', 'NE', 'N'],
         index=0,
         key="bottom_sub"
@@ -630,7 +690,7 @@ with col1:
 
 # Filtro de frequência para o gráfico de histórico
 with col2:
-    frequency_hist = st.radio("Frequência", ['Diário', 'Semanal', 'Mensal'], index=2, key="bottom_freq")
+    frequency_hist = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2, key="bottom_freq")
 
 # Filtrando dados para o subsistema selecionado no gráfico de histórico
 filtered_data_hist = ena_data[(ena_data['ena_data'] >= pd.to_datetime(start_date_input)) & 
