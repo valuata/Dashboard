@@ -41,7 +41,7 @@ st.markdown("""
             width: 50%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
-            border-radius: 8px;  /* Arredondando a borda */
+            border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
@@ -53,7 +53,7 @@ st.markdown("""
             background-color: #67AEAA; /* Cor de fundo */
             color: white; /* Cor do texto */
             border: 1px solid #67AEAA; /* Cor da borda */
-            border-radius: 8px; /* Bordas arredondadas */
+            border-radius: 0px; /* Bordas arredondadas */
             padding: 10px 20px; /* Espaçamento interno */
             font-size: 16px; /* Tamanho da fonte */
             cursor: pointer; /* Mostrar cursor de clique */
@@ -79,7 +79,7 @@ st.markdown("""
             width: 80%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
-            border-radius: 8px;  /* Arredondando a borda */
+            border-radius: 0px;  /* Arredondando a borda */
             padding: 5px;
         }
         div[class="st-an st-ao st-ap st-aq st-ak st-ar st-am st-as st-at st-au st-av st-aw st-ax st-ay st-az st-b0 st-b1 st-b2 st-b3 st-b4 st-b5 st-b6 st-cr st-cs st-ct st-cu st-bb st-bc"] {
@@ -116,15 +116,9 @@ with coltitle:
     st.title("PLD")
 
 with coldownload:
-    csv = pld_data.to_csv(index=False)
     st.write("")
     st.write("")
-    st.download_button(
-        label= "DOWNLOAD",
-        data= csv,
-        file_name= f'Dados_PLD',
-        mime="text/csv",
-    )
+
 # Clean column names (strip leading/trailing spaces)
 pld_data.columns = pld_data.columns.str.strip()
 
@@ -612,3 +606,16 @@ with st.spinner('Carregando gráfico...'):
 
     else:
         st.write("Sem informações para a filtragem selecionada")
+
+import io
+excel_file = io.BytesIO()
+with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+    pld_data.to_excel(writer, index=False, sheet_name='Sheet1')
+
+# Fazendo o download do arquivo Excel
+st.download_button(
+    label="DOWNLOAD",
+    data=excel_file.getvalue(),
+    file_name=f'Dados_PLD.xlsx',  # Certifique-se de definir a variável data_atual
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
