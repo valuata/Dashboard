@@ -40,7 +40,7 @@ st.markdown("""
             width: 50%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
-            border-radius: 8px;  /* Arredondando a borda */
+            border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
@@ -52,7 +52,7 @@ st.markdown("""
             background-color: #67AEAA; /* Cor de fundo */
             color: white; /* Cor do texto */
             border: 1px solid #67AEAA; /* Cor da borda */
-            border-radius: 8px; /* Bordas arredondadas */
+            border-radius: 0px; /* Bordas arredondadas */
             padding: 10px 20px; /* Espaçamento interno */
             font-size: 16px; /* Tamanho da fonte */
             cursor: pointer; /* Mostrar cursor de clique */
@@ -78,7 +78,7 @@ st.markdown("""
             width: 80%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
-            border-radius: 8px;  /* Arredondando a borda */
+            border-radius: 0px;  /* Arredondando a borda */
             padding: 5px;
         }
         div[class="st-an st-ao st-ap st-aq st-ak st-ar st-am st-as st-at st-au st-av st-aw st-ax st-ay st-az st-b0 st-b1 st-b2 st-b3 st-b4 st-b5 st-b6 st-cr st-cs st-ct st-cu st-bb st-bc"] {
@@ -108,18 +108,18 @@ with coltitle:
 with coldownload:
     st.write("")
     st.write("")
-    import io
-    excel_file = io.BytesIO()
-    with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-        tarifa.to_excel(writer, index=False, sheet_name='Sheet1')
+    # import io
+    # excel_file = io.BytesIO()
+    # with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+    #     tarifa.to_excel(writer, index=False, sheet_name='Sheet1')
 
-    # Fazendo o download do arquivo Excel
-    st.download_button(
-        label="DOWNLOAD",
-        data=excel_file.getvalue(),
-        file_name=f'Dados_Tarifas.xlsx',  # Certifique-se de definir a variável data_atual
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    # # Fazendo o download do arquivo Excel
+    # st.download_button(
+    #     label="DOWNLOAD",
+    #     data=excel_file.getvalue(),
+    #     file_name=f'Dados_Tarifas.xlsx',  # Certifique-se de definir a variável data_atual
+    #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    # )
 
 # Layout de filtros lado a lado
 col1, col2, col3, col4 = st.columns(4)
@@ -198,9 +198,10 @@ else:
     with col1:
         postos = ['Única', 'Ponta', 'Fora ponta']
         bars_data = []
+        legend_entries = []
         fig_tusd_demanda = go.Figure()
-        legend_entries = []  # Para armazenar os dados da legenda
 
+        # Adicionar as barras para os dados anteriores
         for posto in postos:
             # Filtrar dados por posto
             posto_data = tusd_demanda_previous[tusd_demanda_previous['Posto'] == posto]
@@ -218,20 +219,22 @@ else:
                 # Adicionar o valor e o valor formatado ao bar_data
                 bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
 
-        # Criar o gráfico
-        for bar_data in bars_data:
+        # Criar as barras para os dados anteriores
+        for idx, bar_data in enumerate(bars_data):
             fig_tusd_demanda.add_trace(go.Bar(
-                x=[bar_data['Posto']],
-                y=[bar_data['Valor']],  # Valor como número
-                name='',
-                marker=dict(color='#e28876'),
-                showlegend=False,
+                x=[bar_data['Posto']],  # Barra no eixo X
+                y=[bar_data['Valor']],  # Valor da barra
+                marker=dict(color='#67aeaa'),  # Cor das barras
                 hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='inside',
+                width=0.45,  # Largura das barras
+                showlegend=False  # Define o grupo da legenda para evitar duplicação
             ))
-        legend_entries.append({'color': '#e28876', 'text': vigencia})
+        legend_entries.append({'color': '#67aeaa', 'text': vigencia})
 
+
+        # Adicionar as barras para os dados atuais
         bars_data = []
         for posto in postos:
             # Filtrar dados por posto
@@ -250,40 +253,39 @@ else:
                 # Adicionar o valor e o valor formatado ao bar_data
                 bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
 
-        for bar_data in bars_data:
+        # Criar as barras para os dados atuais
+        for idx, bar_data in enumerate(bars_data):
             fig_tusd_demanda.add_trace(go.Bar(
-                x=[bar_data['Posto']],
-                y=[bar_data['Valor']],
-                name='',
-                marker=dict(color='#323e47'),
-                showlegend=False,
+                x=[bar_data['Posto']],  # Barra no eixo X
+                y=[bar_data['Valor']],  # Valor da barra
+                marker=dict(color='#323e47'),  # Cor das barras
                 hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
-                textposition='inside',  
-
+                textposition='inside',
+                width=0.45,  # Largura das barras
+                showlegend=False  # Define o grupo da legenda para evitar duplicação
             ))
-            # Adicionar entrada para a legenda
         legend_entries.append({'color': '#323e47', 'text': vigencia})
-        
+
 
         # Layout do gráfico
         fig_tusd_demanda.update_layout(
             title='TUSD Demanda',
             xaxis_title=" ",
             yaxis_title="Valor (R$/kW)",
-            barmode='group',
+            barmode='group',  # Agrupamento das barras
             yaxis=dict(range=[0, None]),  # Restringir eixo Y a começar de 0
             legend=dict(
-                orientation="h",
+                orientation="h",  # Lenda horizontal
                 yanchor="bottom", 
                 y=-0.25,
                 xanchor="center",
                 x=0.5,
                 traceorder="normal"  # Garante que a ordem da legenda seja conforme o esperado
             ),
+            bargap=0.1,  # Espaço entre as barras
+            bargroupgap=0.2  # Ajuste a distância entre grupos de barras
         )
-
-        # Adicionar manualmente os itens da legenda abaixo do gráfico
         for entry in legend_entries:
             fig_tusd_demanda.add_trace(go.Scatter(
                 x=[None], y=[None], mode='markers',
@@ -291,7 +293,6 @@ else:
                 name=entry['text'],
                 showlegend=True
             ))
-
         # Mostrar o gráfico
         with st.spinner('Carregando gráfico...'):
             st.plotly_chart(fig_tusd_demanda)
@@ -304,66 +305,68 @@ else:
         legend_entries = []
         fig_tusd_encargo = go.Figure()
 
+        # Adicionar as barras para os dados anteriores
         for posto in postos:
             # Filtrar dados por posto
             posto_data = tusd_encargo_previous[tusd_encargo_previous['Posto'] == posto]
-            
+
             if posto_data.empty:
                 bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})  # Se não houver dados, atribui 0
             else:
                 # Obter o valor de TUSD
                 current_value = posto_data['TUSD'].values[0] if not posto_data.empty else 0
                 vigencia = posto_data['Início Vigência'].values[0] if not posto_data.empty else ''
-                
+
                 # Formatar o valor no formato português
                 formatted_value = format_decimal(current_value, locale='pt_BR', format="#,##0.00")
 
                 # Adicionar o valor e o valor formatado ao bar_data
                 bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
 
-        # Criar o gráfico
+        # Criar as barras para os dados anteriores
         for bar_data in bars_data:
             fig_tusd_encargo.add_trace(go.Bar(
-                x=[bar_data['Posto']],
-                y=[bar_data['Valor']],
-                name='',
-                marker=dict(color='#e28876'),
-                showlegend=False,
+                x=[bar_data['Posto']],  # Barra no eixo X
+                y=[bar_data['Valor']],  # Valor da barra
+                marker=dict(color='#67aeaa'),  # Cor das barras
                 hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='inside',
+                width=0.45,  # Largura das barras
+                showlegend=False  # Define o grupo da legenda para evitar duplicação
             ))
-        legend_entries.append({'color': '#e28876', 'text': vigencia})
+        legend_entries.append({'color': '#67aeaa', 'text': vigencia})
 
+        # Adicionar as barras para os dados atuais
         bars_data = []
         for posto in postos:
             # Filtrar dados por posto
             posto_data = tusd_encargo[tusd_encargo['Posto'] == posto]
-            
+
             if posto_data.empty:
                 bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})  # Se não houver dados, atribui 0
             else:
                 # Obter o valor de TUSD
                 current_value = posto_data['TUSD'].values[0] if not posto_data.empty else 0
                 vigencia = posto_data['Início Vigência'].values[0] if not posto_data.empty else ''
-                
+
                 # Formatar o valor no formato português
                 formatted_value = format_decimal(current_value, locale='pt_BR', format="#,##0.00")
 
                 # Adicionar o valor e o valor formatado ao bar_data
                 bars_data.append({'Posto': posto, 'Valor': current_value, 'FormattedValor': formatted_value})
 
-        # Criar o gráfico
+        # Criar as barras para os dados atuais
         for bar_data in bars_data:
             fig_tusd_encargo.add_trace(go.Bar(
-                x=[bar_data['Posto']],
-                y=[bar_data['Valor']],
-                name='',
-                marker=dict(color='#323e47'),
-                showlegend=False,
+                x=[bar_data['Posto']],  # Barra no eixo X
+                y=[bar_data['Valor']],  # Valor da barra
+                marker=dict(color='#323e47'),  # Cor das barras
                 hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='inside',
+                width=0.45,  # Largura das barras
+                showlegend=False  # Define o grupo da legenda para evitar duplicação
             ))
         legend_entries.append({'color': '#323e47', 'text': vigencia})
 
@@ -372,17 +375,21 @@ else:
             title='TUSD Encargo',
             xaxis_title=" ",
             yaxis_title="Valor (R$/kWh)",
-            barmode='group',
-            yaxis=dict(range=[0, None]),
+            barmode='group',  # Agrupamento das barras
+            yaxis=dict(range=[0, None]),  # Restringir eixo Y a começar de 0
             legend=dict(
-                orientation="h",
+                orientation="h",  # Lenda horizontal
                 yanchor="bottom", 
                 y=-0.25,
                 xanchor="center",
                 x=0.5,
                 traceorder="normal"  # Garante que a ordem da legenda seja conforme o esperado
-            ),)
-        
+            ),
+            bargap=0.1,  # Espaço entre as barras
+            bargroupgap=0.2  # Ajuste a distância entre grupos de barras
+        )
+
+        # Adicionar entradas na legenda
         for entry in legend_entries:
             fig_tusd_encargo.add_trace(go.Scatter(
                 x=[None], y=[None], mode='markers',
@@ -390,9 +397,10 @@ else:
                 name=entry['text'],
                 showlegend=True
             ))
+
+        # Mostrar o gráfico
         with st.spinner('Carregando gráfico...'):
             st.plotly_chart(fig_tusd_encargo)
-
     # Gráfico 3: TUSD Tarifa
     with col3:
         postos = ['Ponta', 'Fora ponta']
@@ -423,13 +431,14 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 name='',
-                marker=dict(color='#e28876'),
+                marker=dict(color='#67aeaa'),
                 showlegend=False,
+                width=0.4,  # Largura das barras
                 hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='inside',
             ))
-        legend_entries.append({'color': '#e28876', 'text': vigencia})
+        legend_entries.append({'color': '#67aeaa', 'text': vigencia})
 
 
         bars_data = []
@@ -458,6 +467,7 @@ else:
                 name='',
                 marker=dict(color='#323e47'),
                 showlegend=False,
+                width=0.4,  # Largura das barras
                 hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='inside',
@@ -635,3 +645,16 @@ with st.spinner('Carregando gráfico...'):
         st.plotly_chart(fig_mes)
     else:
         st.write(f"Nenhum dado encontrado para o mês {month} na região {region}.")
+
+import io
+excel_file = io.BytesIO()
+with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+    tarifa.to_excel(writer, index=False, sheet_name='Sheet1')
+
+# Fazendo o download do arquivo Excel
+st.download_button(
+    label="DOWNLOAD",
+    data=excel_file.getvalue(),
+    file_name=f'Dados_Tarifas.xlsx',  # Certifique-se de definir a variável data_atual
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
