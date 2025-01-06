@@ -42,7 +42,7 @@ st.markdown("""
             width: 50%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
-            border-radius: 8px;  /* Arredondando a borda */
+            border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
@@ -54,7 +54,7 @@ st.markdown("""
             background-color: #67AEAA; /* Cor de fundo */
             color: white; /* Cor do texto */
             border: 1px solid #67AEAA; /* Cor da borda */
-            border-radius: 8px; /* Bordas arredondadas */
+            border-radius: 0px; /* Bordas arredondadas */
             padding: 10px 20px; /* Espaçamento interno */
             font-size: 16px; /* Tamanho da fonte */
             cursor: pointer; /* Mostrar cursor de clique */
@@ -80,7 +80,7 @@ st.markdown("""
             width: 80%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
-            border-radius: 8px;  /* Arredondando a borda */
+            border-radius: 0px;  /* Arredondando a borda */
             padding: 5px;
         }
         div[class="st-an st-ao st-ap st-aq st-ak st-ar st-am st-as st-at st-au st-av st-aw st-ax st-ay st-az st-b0 st-b1 st-b2 st-b3 st-b4 st-b5 st-b6 st-cr st-cs st-ct st-cu st-bb st-bc"] {
@@ -437,18 +437,6 @@ with coltitle:
 
 with coldownload:
     st.write("")
-    import io
-    excel_file = io.BytesIO()
-    with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-        ena_data.to_excel(writer, index=False, sheet_name='Sheet1')
-
-    # Fazendo o download do arquivo Excel
-    st.download_button(
-        label="DOWNLOAD",
-        data=excel_file.getvalue(),
-        file_name=f'Dados_ENA_({data_atual}).xlsx',  # Certifique-se de definir a variável data_atual
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
 
 monthly_data = pd.read_csv('Mlt_atualizado.csv')
 monthly_data['Ano'] = monthly_data['Ano'].apply(lambda x: str(x).strip())
@@ -979,3 +967,16 @@ with st.spinner('Carregando gráfico...'):
 
     # Exibir o gráfico
     st.plotly_chart(fig_area_hist)
+
+import io
+excel_file = io.BytesIO()
+with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+    ena_data.to_excel(writer, index=False, sheet_name='Sheet1')
+
+# Fazendo o download do arquivo Excel
+st.download_button(
+    label="DOWNLOAD",
+    data=excel_file.getvalue(),
+    file_name=f'Dados_ENA_({data_atual}).xlsx',  # Certifique-se de definir a variável data_atual
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
