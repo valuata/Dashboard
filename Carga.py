@@ -210,18 +210,7 @@ with coltitle:
 with coldownload:
     st.write("")
     st.write("")
-    import io
-    excel_file = io.BytesIO()
-    with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-        carga_data.to_excel(writer, index=False, sheet_name='Sheet1')
 
-    # Fazendo o download do arquivo Excel
-    st.download_button(
-        label="DOWNLOAD",
-        data=excel_file.getvalue(),
-        file_name=f'Dados_Carga_({data_atual}).xlsx',  # Certifique-se de definir a variável data_atual
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
 carga_data['din_instante'] = pd.to_datetime(carga_data['din_instante'].str.slice(0, 10), format="%Y-%m-%d")
 
 # Controlador de intervalo de datas
@@ -419,3 +408,17 @@ with st.spinner('Carregando gráfico...'):
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.write("Sem informações disponíveis para a filtragem feita.")
+
+
+import io
+excel_file = io.BytesIO()
+with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+    carga_data.to_excel(writer, index=False, sheet_name='Sheet1')
+
+# Fazendo o download do arquivo Excel
+st.download_button(
+    label="DOWNLOAD",
+    data=excel_file.getvalue(),
+    file_name=f'Dados_Carga_({data_atual}).xlsx',  # Certifique-se de definir a variável data_atual
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
