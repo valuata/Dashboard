@@ -38,14 +38,14 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 50%;
+            width: 70%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 50%;
+            width: 70%;
             outline: none;
             border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
         }
@@ -76,7 +76,7 @@ st.markdown("""
             background-color: #67AEAA;  /* Cor do tracinho */
         }
         div[data-baseweb="select"] {
-            width: 80%;
+            width: 100%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
