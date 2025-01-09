@@ -45,7 +45,7 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 50%;
+            width: 60%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
