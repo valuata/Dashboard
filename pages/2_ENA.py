@@ -165,7 +165,7 @@ def ler_data_arquivo():
         return None
 
 data_atual = datetime.today()
-arquivo_data = 'data_atual_earm.txt'
+arquivo_data = 'data_atual_ena.txt'
 data_arquivo = ler_data_arquivo()
 locale = Locale('pt', 'BR')
 
