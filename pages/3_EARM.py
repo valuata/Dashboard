@@ -552,12 +552,20 @@ with st.spinner('Carregando gráfico...'):
         )
         if frequency == 'Diário':
             num_ticks = 5  # Quantidade de ticks desejados
-    
+
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (agg_data['ear_data'].max() - agg_data['ear_data'].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'D'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=agg_data['ear_data'].min(), 
                 end=agg_data['ear_data'].max(), 
-                freq=f'{int((agg_data["ear_data"].max() - agg_data["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
     
             # Formatar as datas para o formato desejado
@@ -572,12 +580,20 @@ with st.spinner('Carregando gráfico...'):
             )
         elif frequency == 'Semanal':
             num_ticks = 5  # Quantidade de ticks desejados
-    
+
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (agg_data['ear_data'].max() - agg_data['ear_data'].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'W-SAT'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=agg_data['ear_data'].min(), 
                 end=agg_data['ear_data'].max(), 
-                freq=f'{int((agg_data["ear_data"].max() - agg_data["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
     
             # Formatar as datas para o formato desejado
@@ -592,12 +608,20 @@ with st.spinner('Carregando gráfico...'):
             )
         else:
             num_ticks = 5  # Quantidade de ticks desejados
-    
+
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (agg_data['ear_data'].max() - agg_data['ear_data'].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'M'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=agg_data['ear_data'].min(), 
                 end=agg_data['ear_data'].max(), 
-                freq=f'{int((agg_data["ear_data"].max() - agg_data["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
     
             # Formatar as datas para o formato desejado
@@ -794,12 +818,20 @@ with st.spinner('Carregando gráfico...'):
             # Ajuste do eixo X para diferentes frequências
             if frequency_bottom == 'Diário':
                 num_ticks = 5  # Quantidade de ticks desejados
-        
+
                 # Selecione as datas para exibir no eixo X com base no número de ticks
+                days_diff = (agg_data['ear_data'].max() - agg_data['ear_data'].min()).days
+
+                # Ensure we don't divide by zero
+                if days_diff == 0:
+                    freq = 'D'  # Default to daily if the date range is only one day
+                else:
+                    freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
                 tick_dates = pd.date_range(
-                    start=agg_data_bottom['ear_data'].min(), 
-                    end=agg_data_bottom['ear_data'].max(), 
-                    freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                    start=agg_data['ear_data'].min(), 
+                    end=agg_data['ear_data'].max(), 
+                    freq=freq
                 )
         
                 # Formatar as datas para o formato desejado
@@ -814,14 +846,21 @@ with st.spinner('Carregando gráfico...'):
                 )
             elif frequency_bottom == 'Semanal':
                 num_ticks = 5  # Quantidade de ticks desejados
-        
+
                 # Selecione as datas para exibir no eixo X com base no número de ticks
+                days_diff = (agg_data['ear_data'].max() - agg_data['ear_data'].min()).days
+
+                # Ensure we don't divide by zero
+                if days_diff == 0:
+                    freq = 'W-SAT'  # Default to daily if the date range is only one day
+                else:
+                    freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
                 tick_dates = pd.date_range(
-                    start=agg_data_bottom['ear_data'].min(), 
-                    end=agg_data_bottom['ear_data'].max(), 
-                    freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                    start=agg_data['ear_data'].min(), 
+                    end=agg_data['ear_data'].max(), 
+                    freq=freq
                 )
-        
                 # Formatar as datas para o formato desejado
                 formatted_ticks = [format_week_date(date) for date in tick_dates]
         
@@ -834,12 +873,20 @@ with st.spinner('Carregando gráfico...'):
                 )
             else:
                 num_ticks = 5  # Quantidade de ticks desejados
-        
+
                 # Selecione as datas para exibir no eixo X com base no número de ticks
+                days_diff = (agg_data['ear_data'].max() - agg_data['ear_data'].min()).days
+
+                # Ensure we don't divide by zero
+                if days_diff == 0:
+                    freq = 'M'  # Default to daily if the date range is only one day
+                else:
+                    freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
                 tick_dates = pd.date_range(
-                    start=agg_data_bottom['ear_data'].min(), 
-                    end=agg_data_bottom['ear_data'].max(), 
-                    freq=f'{int((agg_data_bottom["ear_data"].max() - agg_data_bottom["ear_data"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                    start=agg_data['ear_data'].min(), 
+                    end=agg_data['ear_data'].max(), 
+                    freq=freq
                 )
         
                 # Formatar as datas para o formato desejado
