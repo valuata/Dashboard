@@ -37,14 +37,14 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 70%;
+            width: 50%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 70%;
+            width: 50%;
             outline: none;
             border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
         }
@@ -75,7 +75,7 @@ st.markdown("""
             background-color: #67AEAA;  /* Cor do tracinho */
         }
         div[data-baseweb="select"] {
-            width: 100%;
+            width: 80%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
@@ -91,6 +91,14 @@ st.markdown("""
         footer {visivility: hidden;}
     </style>
 """, unsafe_allow_html=True)
+
+config = {
+    'displaylogo': False,    # Desabilita o logo Plotly na barra
+    'modeBarButtonsToRemove': ['zoomIn2d', 'zoomOut2d', 'lasso2d', 'select2d'],  # Remove botões de zoom
+    'modeBarButtonsToAdd': ['resetScale2d'],  # Adiciona um botão para resetar o gráfico
+    'showTips': False,        # Desabilita dicas de ferramenta
+    'responsive': False      # Desabilita o redimensionamento automático
+}
 
 # Carregar os dados
 tarifa = pd.read_csv('tarifa_atualizado.csv')
@@ -295,7 +303,7 @@ else:
             ))
         # Mostrar o gráfico
         with st.spinner('Carregando gráfico...'):
-            st.plotly_chart(fig_tusd_demanda)
+            st.plotly_chart(fig_tusd_demanda, config=config)
 
 
     # Gráfico 2: TUSD Encargo
@@ -400,7 +408,7 @@ else:
 
         # Mostrar o gráfico
         with st.spinner('Carregando gráfico...'):
-            st.plotly_chart(fig_tusd_encargo)
+            st.plotly_chart(fig_tusd_encargo, config=config)
     # Gráfico 3: TUSD Tarifa
     with col3:
         postos = ['Ponta', 'Fora ponta']
@@ -498,10 +506,12 @@ else:
                 showlegend=True
             ))
         with st.spinner('Carregando gráfico...'):
-            st.plotly_chart(fig_tusd_tarifa)
+            st.plotly_chart(fig_tusd_tarifa, config=config)
 
 
+st.write("")
 st.write("---")
+st.write("")
 st.write("### Variação das Bandeiras Tarifárias")
 
 # Definir a ordem das bandeiras
@@ -601,7 +611,7 @@ with st.spinner('Carregando gráfico...'):
                 ticktext=df_filtered_ano['Mes'].unique()
             )
         )
-        st.plotly_chart(fig_ano)
+        st.plotly_chart(fig_ano, config=config)
     else:
         st.write(f"Nenhum dado encontrado para o ano {year} na região {region}.")
 
@@ -642,7 +652,7 @@ with st.spinner('Carregando gráfico...'):
                 ticktext=df_month_filtered['Ano'].unique(),  # Garantir que os anos apareçam corretamente
             )
         )
-        st.plotly_chart(fig_mes)
+        st.plotly_chart(fig_mes, config=config)
     else:
         st.write(f"Nenhum dado encontrado para o mês {month} na região {region}.")
 
