@@ -38,16 +38,19 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 70%;
+            width: 50%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 70%;
+            width: 50%;
             outline: none;
             border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDateInput div {
+            border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
         }
         .stDownloadButton>button {
             background-color: #67AEAA; /* Cor de fundo */
@@ -76,7 +79,7 @@ st.markdown("""
             background-color: #67AEAA;  /* Cor do tracinho */
         }
         div[data-baseweb="select"] {
-            width: 100%;
+            width: 80%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
@@ -94,14 +97,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 locale = Locale('pt', 'BR')
 
+config = {
+    'displaylogo': False,    # Desabilita o logo Plotly na barra
+    'modeBarButtonsToRemove': ['zoomIn2d', 'zoomOut2d', 'lasso2d', 'select2d'],  # Remove botões de zoom
+    'modeBarButtonsToAdd': ['resetScale2d'],  # Adiciona um botão para resetar o gráfico
+    'showTips': False,        # Desabilita dicas de ferramenta
+    'responsive': False      # Desabilita o redimensionamento automático
+}
+
 # Set page config
 def format_week_date(date):
     # Calcula o número da semana dentro do mês
     week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
-    return f"S{week_number}/{format_date(date, format='MMM/yyyy', locale='pt_BR').upper()}"
+    return f"S{week_number}/{format_date(date, format='MM/yyyy', locale='pt_BR').upper()}"
 
 def format_month_date(date):
-    return format_date(date, format='MMM/yyyy', locale='pt_BR').upper()
+    return format_date(date, format='MM/yyyy', locale='pt_BR').upper()
 
 def format_daily_date(date):
     return date.strftime('%d/%m/%Y')
@@ -111,13 +122,7 @@ def format_hour_date(date):
 # Load the data
 pld_data = pd.read_csv("PLD Horário Comercial Historico.csv")
 
-coltitle,  coldownload= st.columns([8, 1])
-with coltitle:
-    st.title("PLD")
-
-with coldownload:
-    st.write("")
-    st.write("")
+st.title("PLD")
 
 # Clean column names (strip leading/trailing spaces)
 pld_data.columns = pld_data.columns.str.strip()
@@ -141,14 +146,21 @@ max_date = pld_data.index.get_level_values('Data').max().date()
 end_date_default = max_date
 start_date_default = max_date.replace(year=max_date.year - 5, month=1, day=1)
 
-# Date Range Slider
+# Verifica se já existe uma configuração de datas no session_state
+if 'slider_dates' not in st.session_state:
+    st.session_state.slider_dates = (start_date_default, end_date_default)
+
+# --- Slider para seleção do intervalo de datas ---
 start_date_slider, end_date_slider = st.slider(
     "**Selecione o intervalo de datas**",
     min_value=min_date,
     max_value=max_date,
-    value=(start_date_default, end_date_default),
+    value=st.session_state.slider_dates,
     format="DD/MM/YYYY"
 )
+
+# Atualizar o session_state com o novo intervalo de datas do slider
+st.session_state.slider_dates = (start_date_slider, end_date_slider)
 
 # Custom order for submarkets
 submarket_order = ['SE/CO', 'S', 'NE', 'N']
@@ -158,25 +170,34 @@ colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']
 # Multiple submarket selection
 submarket_options = [sub for sub in submarket_order if sub in pld_data.index.get_level_values('Submercado').unique()]
 
-
-# Display date inputs side by side using st.columns()
+# Exibir inputs de data lado a lado usando st.columns()
 col3, col4, col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
     period = st.radio("**Frequência**", ('Horário', 'Diário', 'Semanal', 'Mensal'), index=3)  # Default to 'Mensal'
 with col2:
-    selected_submarkets = st.multiselect("**Selecione os Submercados**", submarket_options, default=submarket_options, placeholder= 'Escolha uma opção')
+    selected_submarkets = st.multiselect("**Selecione os Submercados**", submarket_options, default=submarket_options, placeholder='Escolha uma opção')
 with col3:
+    # Atualiza o valor do date input para o valor do slider
     start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
+    # Sincroniza a alteração no date_input com o slider
+    if start_date_input != start_date_slider:
+        st.session_state.slider_dates = (start_date_input, end_date_slider)  # Atualiza o slider com a nova data
+        st.rerun()  # Força a atualização imediata
 with col4:
+    # Atualiza o valor do date input para o valor do slider
     end_date_input = st.date_input("**Fim**", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
+    # Sincroniza a alteração no date_input com o slider
+    if end_date_input != end_date_slider:
+        st.session_state.slider_dates = (start_date_slider, end_date_input)  # Atualiza o slider com a nova data
+        st.rerun()  # Força a atualização imediata
 
-# Apply the selected date range
+# Aplicar o intervalo de datas selecionado
 start_date = pd.to_datetime(start_date_input)
 end_date = pd.to_datetime(end_date_input)
 
-# Filter the data based on the selected date range
-filtered_data = pld_data[(pld_data.index.get_level_values('Data') >= start_date) & (pld_data.index.get_level_values('Data') <= end_date)]
-
+# Filtrar os dados com base no intervalo de datas selecionado
+filtered_data = pld_data[(pld_data.index.get_level_values('Data') >= start_date) & 
+                         (pld_data.index.get_level_values('Data') <= end_date)]
 # Função para realizar o resampling e obter os valores médios
 def aggregate_data_for_avg_values(data, frequency):
     data = data.reset_index()  # Reset index to access 'Submercado' and 'Data' columns directly
@@ -210,7 +231,6 @@ filtered_avg_values = aggregated_avg_values[aggregated_avg_values['Submercado'].
 
 if not selected_submarkets:
     st.write("Sem informações disponíveis para a filtragem feita.")
-# Create the average line graph for each selected submarket
 else: 
     avg_values_per_submarket_graph = go.Figure()
     
@@ -229,7 +249,7 @@ else:
                         if sm in selected_submarkets:
                             sm_data = filtered_avg_values[(filtered_avg_values['Submercado'] == sm) & (filtered_avg_values[variavel] == date)]
                             # Asegurando que o valor existe (não vazio) para o submercado
-                            sm_value = format_decimal(sm_data['Valor'].values[0] if len(sm_data) > 0 else None, locale='pt_BR', format="#,##0.0")
+                            sm_value = format_decimal(sm_data['Valor'].values[0] if len(sm_data) > 0 else None, locale='pt_BR', format="#,##0.00")
                             sub_values.append(sm_value)
                         else:
                             sub_values.append(None)
@@ -243,6 +263,7 @@ else:
                     elif period == 'Mensal':
                         formatted_dates.append(format_month_date(date))
                     values.append(sub_values)  # Adiciona os valores dos submercados para essa data
+                
                 # Substituindo valores NaN por 'NaN' em customdata
                 values_with_nan = [
                     [
@@ -259,11 +280,11 @@ else:
                     name=submarket,
                     line=dict(color=color),  # Cor personalizada para cada submercado
                     hovertemplate=( 
-                        "Data: %{customdata[1]: %MMM/%yyyy}<br>"  # Formato da data
-                        "SE/CO: %{customdata[0][0]:.,1f}<br>"  # Valor para SE/CO
-                        "S: %{customdata[0][1]:.,1f}<br>"  # Valor para S
-                        "NE: %{customdata[0][2]:.,1f}<br>"  # Valor para NE
-                        "N: %{customdata[0][3]:.,1f}<br>"  # Valor para N
+                        "Data: %{customdata[1]: %MM/%yyyy}<br>"  + # Formato da data
+                        ("<span style='color:" + '#323e47' + ";'>█</span> SE/CO: %{customdata[0][0]:.,1f}<br>" if 'SE/CO' in selected_submarkets else '') +
+                        ("<span style='color:" + '#68aeaa' + ";'>█</span> S: %{customdata[0][1]:.,1f}<br>" if 'S' in selected_submarkets else '') +
+                        ("<span style='color:" + '#6b8b89' + ";'>█</span> NE: %{customdata[0][2]:.,1f}<br>" if 'NE' in selected_submarkets else '') +
+                        ("<span style='color:" + '#a3d5ce' + ";'>█</span> N: %{customdata[0][3]:.,1f}<br>" if 'N' in selected_submarkets else '') +
                         "<extra></extra>"  # Remove o texto extra padrão (ex: 'trace' name)
                     ),
                     customdata=list(zip(values_with_nan, formatted_dates)),  # Passar os valores com 'NaN' em vez de valores ausentes
@@ -274,10 +295,18 @@ else:
         if period == 'Diário':
             num_ticks = 5  # Quantidade de ticks desejados
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'D'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=filtered_avg_values[variavel].min(), 
                 end=filtered_avg_values[variavel].max(), 
-                freq=f'{int((filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
             # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
@@ -293,10 +322,18 @@ else:
         elif period == 'Semanal':
             num_ticks = 5  # Quantidade de ticks desejados
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'D'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=filtered_avg_values[variavel].min(), 
                 end=filtered_avg_values[variavel].max(), 
-                freq=f'{int((filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
             # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
@@ -312,10 +349,18 @@ else:
         elif period == 'Horário':
             num_ticks = 5  # Quantidade de ticks desejados
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'D'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=filtered_avg_values[variavel].min(), 
                 end=filtered_avg_values[variavel].max(), 
-                freq=f'{int((filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
             # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
@@ -331,10 +376,18 @@ else:
         else:
             num_ticks = 5  # Quantidade de ticks desejados
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'D'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=filtered_avg_values[variavel].min(), 
                 end=filtered_avg_values[variavel].max(), 
-                freq=f'{int((filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
             # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
@@ -375,7 +428,7 @@ else:
         )
     
         # Exibir o gráfico de valores médios
-        st.plotly_chart(avg_values_per_submarket_graph)
+        st.plotly_chart(avg_values_per_submarket_graph, config=config)
     
     with st.spinner('Carregando gráfico...'):
         if period == "Horário":
@@ -383,7 +436,9 @@ else:
         else:
             grafico1("Data")
 
+st.write("")
 st.write("---")
+st.write("")
 
 # Submarket selection for candlestick chart
 
@@ -394,21 +449,28 @@ max_date_bottom = pld_data.index.get_level_values('Data').max().date()
 start_date_default_bottom = max_date_bottom.replace(year=max_date_bottom.year - 5, month=1, day=1)
 end_date_slider_bottom = max_date_bottom
 
-# Selecione o intervalo de datas usando um slider
+# Verificar se o estado do intervalo do slider já está no session_state
+if 'slider_dates_bottom' not in st.session_state:
+    st.session_state.slider_dates_bottom = (start_date_default_bottom, end_date_slider_bottom)
+
+# Selecione o intervalo de datas usando o slider
 start_date_slider_bottom, end_date_slider_bottom = st.slider(
     "**Selecione o intervalo de datas**",
     min_value=min_date_bottom,
     max_value=max_date_bottom,
-    value=(start_date_default_bottom, end_date_slider_bottom),
+    value=st.session_state.slider_dates_bottom,
     format="DD/MM/YYYY",
-    key="slider_bottom_date_range"  # Add unique key here
+    key="slider_bottom_date_range"  # Key único aqui
 )
 
+# Atualizar o session_state com os valores do slider
+st.session_state.slider_dates_bottom = (start_date_slider_bottom, end_date_slider_bottom)
 
+# Exibir inputs de data lado a lado usando st.columns()
+col3, col4, col1, col2 = st.columns([1, 1, 1, 1])
 
-col3, col4 , col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
-    frequency_bottom = st.radio("**Frequência**", ['Semanal', 'Mensal'], index=1, key="bottom_freq")  # Começar com "Mensal" selecionado
+    frequency_bottom = st.radio("**Frequência**", ['Semanal', 'Mensal'], index=1, key="bottom_freq")  # Default para "Mensal"
 
 with col2:
     selected_subsystem_bottom = st.radio(
@@ -417,33 +479,48 @@ with col2:
         index=0,
         key="bottom_sub"
     )
+
 with col3:
+    # Atualiza o valor do date input para o valor do slider
     start_date_input_bottom = st.date_input(
         "**Início**", 
-        min_value=min_date, 
-        max_value=max_date, 
+        min_value=min_date_bottom, 
+        max_value=max_date_bottom, 
         value=start_date_slider_bottom, 
         format="DD/MM/YYYY", 
-        key="start_date_input_bottom"  # Unique key here
+        key="start_date_input_bottom"
     )
+    # Se o valor de start_date_input_bottom mudar, atualizar o slider
+    if start_date_input_bottom != start_date_slider_bottom:
+        st.session_state.slider_dates_bottom = (start_date_input_bottom, end_date_slider_bottom)
+        st.rerun()  # Forçar a atualização da página
+
 with col4:
+    # Atualiza o valor do date input para o valor do slider
     end_date_input_bottom = st.date_input(
         "**Fim**", 
-        min_value=min_date, 
-        max_value=max_date, 
+        min_value=min_date_bottom, 
+        max_value=max_date_bottom, 
         value=end_date_slider_bottom, 
         format="DD/MM/YYYY", 
         key="end_date_input_bottom"
     )
+    # Se o valor de end_date_input_bottom mudar, atualizar o slider
+    if end_date_input_bottom != end_date_slider_bottom:
+        st.session_state.slider_dates_bottom = (start_date_slider_bottom, end_date_input_bottom)
+        st.rerun()  # Forçar a atualização da página
 
-# Filtrar dados para o gráfico de candlestick
+# Filtragem com base nos valores de data
 start_date_bottom = pd.to_datetime(start_date_input_bottom)
 end_date_bottom = pd.to_datetime(end_date_input_bottom)
 
-# Filtro do gráfico de candlestick
-filtered_data_bottom = pld_data[(pld_data.index.get_level_values('Data') >= start_date_bottom) & 
-                                 (pld_data.index.get_level_values('Data') <= end_date_bottom) &
-                                 (pld_data.index.get_level_values('Submercado') == selected_subsystem_bottom)]
+# Filtro para o gráfico de candlestick
+filtered_data_bottom = pld_data[
+    (pld_data.index.get_level_values('Data') >= start_date_bottom) & 
+    (pld_data.index.get_level_values('Data') <= end_date_bottom) &
+    (pld_data.index.get_level_values('Submercado') == selected_subsystem_bottom)
+]
+
 
 # Função para agregar dados para o gráfico candlestick com whisker
 def aggregate_data_for_candlestick(data, frequency):
@@ -474,11 +551,11 @@ def aggregate_data_for_candlestick(data, frequency):
     
     # Resetar o índice novamente
     formatted_data = aggregated_data.copy()
-    formatted_data['Open'] = formatted_data['Open'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
-    formatted_data['High'] = formatted_data['High'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
-    formatted_data['Low'] = formatted_data['Low'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
-    formatted_data['Close'] = formatted_data['Close'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
-    formatted_data['Mean'] = formatted_data['Mean'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.0"))
+    formatted_data['Open'] = formatted_data['Open'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.00"))
+    formatted_data['High'] = formatted_data['High'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.00"))
+    formatted_data['Low'] = formatted_data['Low'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.00"))
+    formatted_data['Close'] = formatted_data['Close'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.00"))
+    formatted_data['Mean'] = formatted_data['Mean'].apply(lambda x: format_decimal(x, locale='pt_BR', format="#,##0.00"))
     # Resetar o índice novamente
     aggregated_data = aggregated_data.reset_index()
     formatted_data = formatted_data.reset_index()
@@ -520,11 +597,11 @@ with st.spinner('Carregando gráfico...'):
             text=formatted_data[['Data','Open', 'High', 'Low', 'Close', 'Mean']].apply(
                 lambda row: (
                     f"Data: {formatted_dates[agg_data.index.get_loc(row.name)]}<br>"  # Usando a data formatada
-                    f"Abertura: {row['Open']} R$<br>"
-                    f"Máximo: {row['High']} R$<br>"
-                    f"Mínimo: {row['Low']} R$<br>"
-                    f"Fechamento: {row['Close']} R$<br>"
-                    f"Média: {row['Mean']} R$"
+                    f"Abertura:R$ {row['Open']}<br>"
+                    f"Máximo:R$ {row['High']}<br>"
+                    f"Mínimo:R$ {row['Low']}<br>"
+                    f"Fechamento:R$ {row['Close']}<br>"
+                    f"Média:R$ {row['Mean']}"
                 ), axis=1
             ),  # Passando os valores de cada linha para o hover
             hoverinfo='text'  # Usar o campo 'text' para exibir as informações
@@ -565,12 +642,20 @@ with st.spinner('Carregando gráfico...'):
         if frequency_bottom == 'Semanal':
             num_ticks = 5  # Quantidade de ticks desejados
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (agg_data['Data'].max() - agg_data['Data'].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'D'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=agg_data['Data'].min(), 
                 end=agg_data['Data'].max(), 
-                freq=f'{int((agg_data['Data'].max() - agg_data['Data'].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
-            # Formatar as datas para o formato desejado
+                    # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
 
             formatted_ticks = [format_week_date(date) for date in tick_dates]
@@ -584,12 +669,19 @@ with st.spinner('Carregando gráfico...'):
         elif frequency_bottom == 'Mensal':
             num_ticks = 5  # Quantidade de ticks desejados
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (agg_data['Data'].max() - agg_data['Data'].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'D'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=agg_data['Data'].min(), 
                 end=agg_data['Data'].max(), 
-                freq=f'{int((agg_data['Data'].max() - agg_data['Data'].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
-            # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
 
             formatted_ticks = [format_month_date(date) for date in tick_dates]
@@ -602,7 +694,7 @@ with st.spinner('Carregando gráfico...'):
             )
 
         # Exibir o gráfico candlestick
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, config=config)
 
     else:
         st.write("Sem informações para a filtragem selecionada")
