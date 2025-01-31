@@ -76,7 +76,7 @@ st.markdown("""
         }
         hr {
             border: 0;
-            height: 2px;
+            height: 0.7px !important;
             background-color: #67AEAA;  /* Cor do tracinho */
         }
         div[data-baseweb="select"] {
