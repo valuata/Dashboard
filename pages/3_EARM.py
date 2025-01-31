@@ -39,16 +39,19 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 70%;
+            width: 50%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
-            border-radius: 0px;  /* Arredondando a borda */
+            border-radius: 0px !important;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 70%;
+            width: 50%;
             outline: none;
             border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDateInput div {
+            border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
         }
         .stDownloadButton>button {
             background-color: #67AEAA; /* Cor de fundo */
@@ -77,7 +80,7 @@ st.markdown("""
             background-color: #67AEAA;  /* Cor do tracinho */
         }
         div[data-baseweb="select"] {
-            width: 100%;
+            width: 80%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
@@ -93,6 +96,15 @@ st.markdown("""
         footer {visivility: hidden;}
     </style>
 """, unsafe_allow_html=True)
+
+config = {
+    'displaylogo': False,    # Desabilita o logo Plotly na barra
+    'modeBarButtonsToRemove': ['zoomIn2d', 'zoomOut2d', 'lasso2d', 'select2d'],  # Remove botões de zoom
+    'modeBarButtonsToAdd': ['resetScale2d'],  # Adiciona um botão para resetar o gráfico
+    'showTips': False,        # Desabilita dicas de ferramenta
+    'responsive': False      # Desabilita o redimensionamento automático
+}
+
 
 def aggregate_data_earm(data, frequency, metric):
     data['ear_data'] = pd.to_datetime(data['ear_data'])  # Garantir que 'ear_data' é datetime
@@ -118,9 +130,9 @@ def aggregate_data_earm(data, frequency, metric):
 def format_week_date(date):
     # Calcula o número da semana dentro do mês
     week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
-    return f"S{week_number}/{format_date(date, format='MMM/yyyy', locale='pt_BR').upper()}"
+    return f"S{week_number}/{format_date(date, format='MM/yyyy', locale='pt_BR').upper()}"
 def format_month_date(date):
-    return format_date(date, format='MMM/yyyy', locale='pt_BR').upper()
+    return format_date(date, format='MM/yyyy', locale='pt_BR').upper()
 def format_daily_date(date):
     return date.strftime('%d/%m/%Y')
 
@@ -362,17 +374,8 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 
 earm_data = pd.read_csv('EARM_atualizado.csv')
 
-# Carregar os dados
-coltitle, coldownload= st.columns([8, 1])
-with coltitle:
-    st.title("Reservatórios")
-
-with coldownload:
-    st.write("")
-    st.write("")
-
+st.title("Reservatórios")
 earm_data['ear_data'] = pd.to_datetime(earm_data['ear_data'])
-
 # Última data disponível
 latest_date = earm_data['ear_data'].max()
 latest_data = earm_data[earm_data['ear_data'] == latest_date]
@@ -386,9 +389,10 @@ columns = st.columns(num_figures)
 # Exibir as figuras nas colunas
 for idx, fig in enumerate(fig_atual_sim):
     columns[idx].plotly_chart(fig)
-    
 
 st.write("---")
+st.write("")
+
 min_date = earm_data['ear_data'].min().date()
 max_date = earm_data['ear_data'].max().date()
 
@@ -396,18 +400,25 @@ max_date = earm_data['ear_data'].max().date()
 start_date_default = max_date.replace(year=max_date.year - 5, month=1, day=1)
 end_date_slider = max_date
 
+# Inicialização do estado da sessão, se não estiver definido
+if 'slider_dates' not in st.session_state:
+    st.session_state.slider_dates = (start_date_default, end_date_slider)
+
 # Selecione o intervalo de datas usando um slider
 start_date_slider, end_date_slider = st.slider(
     "**Selecione o intervalo de datas**",
     min_value=min_date,
     max_value=max_date,
-    value=(start_date_default, end_date_slider),
+    value=st.session_state.slider_dates,
     format="DD/MM/YYYY",
     key="slider_top_date_range"
 )
 
+# Atualizar os valores dos date inputs conforme o slider
+st.session_state.slider_dates = (start_date_slider, end_date_slider)
+
 # Filtros para o resto da página
-col3, col4 , col1, col2= st.columns([1, 1, 1, 1])
+col3, col4 , col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
     frequency = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2)  # Começar com "Mensal" selecionado
     metric = 'MWmês'
@@ -418,18 +429,26 @@ with col2:
         options=['SE/CO', 'S', 'NE', 'N'],
         default=['SE/CO', 'S', 'NE', 'N']  # Seleção padrão
     )
-with col3:
-    start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
-with col4:
-    end_date_input = st.date_input("**Fim**", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
 
+with col3:
+    # Atualiza o valor do date input para o valor do slider
+    start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
+    if start_date_input != start_date_slider:
+        st.session_state.slider_dates = (start_date_input, end_date_slider)  # Atualiza o slider com a nova data
+        st.rerun()  # Força a atualização imediata
+
+with col4:
+    # Atualiza o valor do date input para o valor do slider
+    end_date_input = st.date_input("**Fim**", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
+    if end_date_input != end_date_slider:
+        st.session_state.slider_dates = (start_date_slider, end_date_input)  # Atualiza o slider com a nova data
+        st.rerun()  # Força a atualização imediata
 
 # Filtragem por data
 start_date = start_date_input
 end_date = end_date_input
 filtered_data = earm_data[(earm_data['ear_data'] >= pd.to_datetime(start_date)) & 
                           (earm_data['ear_data'] <= pd.to_datetime(end_date))]
-
 # Seleção da coluna para a métrica
 metric_column = 'ear_verif_subsistema_mwmes'
 
@@ -479,24 +498,24 @@ with st.spinner('Carregando gráfico...'):
                                   ((ne_val[0] if len(ne_val) > 0 else 0)if 'NE' in selected_subsystems else 0) + \
                                   ((n_val[0] if len(n_val) > 0 else 0)if 'N' in selected_subsystems else 0)
                         
-                        custom_data.append([format_decimal(se_val[0] if len(se_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
-                                            format_decimal(s_val[0] if len(s_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
-                                            format_decimal(ne_val[0] if len(ne_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
-                                            format_decimal(n_val[0] if len(n_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
-                                            format_decimal(sum_val, locale='pt_BR', format="#,##0.0"), formatted_date])
+                        custom_data.append([format_decimal(se_val[0] if len(se_val) > 0 else 0, locale='pt_BR', format="#,##0."),
+                                            format_decimal(s_val[0] if len(s_val) > 0 else 0, locale='pt_BR', format="#,##0."),
+                                            format_decimal(ne_val[0] if len(ne_val) > 0 else 0, locale='pt_BR', format="#,##0."),
+                                            format_decimal(n_val[0] if len(n_val) > 0 else 0, locale='pt_BR', format="#,##0."),
+                                            format_decimal(sum_val, locale='pt_BR', format="#,##0."), formatted_date])
     
                     # Criar o hovertemplate dinâmico com base nos subsistemas selecionados
                     hovertemplate = '%{customdata[5]}: <br>' +  \
                                     'BRASIL: %{customdata[4]:.,1f}<br>'
     
                     if 'SE/CO' in selected_subsystems:
-                        hovertemplate += '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[0]:.,1f}<br>'
+                        hovertemplate += '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[0]:.,0f}<br>'
                     if 'S' in selected_subsystems:
-                        hovertemplate += '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[1]:.,1f}<br>'
+                        hovertemplate += '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[1]:.,0f}<br>'
                     if 'NE' in selected_subsystems:
-                        hovertemplate += '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[2]:.,1f}<br>'
+                        hovertemplate += '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[2]:.,0f}<br>'
                     if 'N' in selected_subsystems:
-                        hovertemplate += '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[3]:.,1f}<br>'
+                        hovertemplate += '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[3]:.,0f}<br>'
     
                     hovertemplate += '<extra></extra>'
     
@@ -602,11 +621,13 @@ with st.spinner('Carregando gráfico...'):
             yaxis_nticks=5
         )
         # Exibindo o gráfico
-        st.plotly_chart(fig_stacked)
+        st.plotly_chart(fig_stacked, config=config)
     else:
         st.write("Nenhum dado disponível para os filtros selecionados.")
-st.write("---")
 
+st.write("")
+st.write("---")
+st.write("")
 
 min_date_bottom = earm_data['ear_data'].min().date()
 max_date_bottom = earm_data['ear_data'].max().date()
@@ -616,18 +637,23 @@ start_date_default_bottom = max_date_bottom.replace(year=max_date_bottom.year - 
 end_date_slider_bottom = max_date_bottom
 
 # Selecione o intervalo de datas usando um slider
+if 'slider_dates_bottom' not in st.session_state:
+    st.session_state.slider_dates_bottom = (start_date_default_bottom, end_date_slider_bottom)
+
 start_date_slider_bottom, end_date_slider_bottom = st.slider(
     "**Selecione o intervalo de datas**",
     min_value=min_date_bottom,
     max_value=max_date_bottom,
-    value=(start_date_default_bottom, end_date_slider_bottom),
+    value=st.session_state.slider_dates_bottom,
     format="DD/MM/YYYY",
     key="slider_bottom_date_range"  # Add unique key here
 )
 
+# Atualizar os valores dos date inputs conforme o slider
+st.session_state.slider_dates_bottom = (start_date_slider_bottom, end_date_slider_bottom)
 
-
-col3, col4 , col1, col2= st.columns([1, 1, 1, 1])
+# Filtros para o resto da página
+col3, col4 , col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
     frequency_bottom = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2, key="bottom_freq")  # Começar com "Mensal" selecionado
     metric = 'MWmês'
@@ -648,6 +674,10 @@ with col3:
         format="DD/MM/YYYY", 
         key="start_date_input_bottom"  # Unique key here
     )
+    if start_date_input_bottom != start_date_slider_bottom:
+        st.session_state.slider_dates_bottom = (start_date_input_bottom, end_date_slider_bottom)  # Atualiza o slider com a nova data
+        st.rerun()  # Força a atualização imediata
+
 with col4:
     end_date_input_bottom = st.date_input(
         "**Fim**", 
@@ -657,6 +687,11 @@ with col4:
         format="DD/MM/YYYY", 
         key="end_date_input_bottom"
     )
+    if end_date_input_bottom != end_date_slider_bottom:
+        st.session_state.slider_dates_bottom = (start_date_slider_bottom, end_date_input_bottom)  # Atualiza o slider com a nova data
+        st.rerun()  # Força a atualização imediata
+
+# Filtragem por data
 start_date_bottom = start_date_input_bottom
 end_date_bottom = end_date_input_bottom
 filtered_data_bottom = earm_data[(earm_data['ear_data'] >= pd.to_datetime(start_date_bottom)) & 
@@ -686,6 +721,7 @@ with st.spinner('Carregando gráfico...'):
             # Calcular valores necessários para customdata
             max_value_bottom = earm_data[earm_data['id_subsistema'] == selected_subsystem_bottom].iloc[-1][f'ear_max_subsistema']
             remaining_capacity_bottom = max_value_bottom - subsystem_data_bottom['ear_verif_subsistema_mwmes']
+            capacity = remaining_capacity_bottom + subsystem_data_bottom['ear_verif_subsistema_mwmes']
 
             # Função para formatar a data conforme a frequência
             def format_date_based_on_frequency(date, frequency):
@@ -704,12 +740,15 @@ with st.spinner('Carregando gráfico...'):
             # Função para aplicar a formatação
             def format_value(value):
                 # Verifica se o valor é válido (não NaN, por exemplo)
+                return format_decimal(value if pd.notna(value) else 0, locale='pt_BR', format="#,##0.")
+            def format_value_perc(value):
+                # Verifica se o valor é válido (não NaN, por exemplo)
                 return format_decimal(value if pd.notna(value) else 0, locale='pt_BR', format="#,##0.0")
 
             # Formatar as colunas "Valor" e "Capacidade restante" diretamente usando apply
             subsystem_data_bottom['formatted_value'] = subsystem_data_bottom['ear_verif_subsistema_mwmes'].apply(format_value)
-            subsystem_data_bottom['formatted_remaining_capacity'] = remaining_capacity_bottom.apply(format_value)
-            subsystem_data_bottom['ear_verif_subsistema_percentual'] = subsystem_data_bottom['ear_verif_subsistema_percentual'].apply(format_value)
+            subsystem_data_bottom['formatted_remaining_capacity'] = capacity.apply(format_value)
+            subsystem_data_bottom['ear_verif_subsistema_percentual'] = subsystem_data_bottom['ear_verif_subsistema_percentual'].apply(format_value_perc)
 
             # Barra de valor principal (barra de cima)
             fig_bottom.add_trace(go.Bar(
@@ -720,9 +759,9 @@ with st.spinner('Carregando gráfico...'):
                 customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
                 hovertemplate=(
                     "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
-                    "Valor: %{customdata[2]:.,1f}<br>"  # Exibe o valor formatado
-                    "Capacidade utilizada: %{customdata[0]:.,1f} %<br>"  # Exibe o valor de customdata (percentual)
-                    "Capacidade restante: %{customdata[4]:.,1f}<br>"  # Exibe a capacidade restante formatada
+                    "EARM: %{customdata[2]:.,0f}<br>"  # Exibe o valor formatado
+                    "Capacidade Máxima: %{customdata[4]:.,0f}<br>"
+                    "Capacidade Utilizada: %{customdata[0]:.,1f}%<br>"  # Exibe o valor de customdata (percentual)
                 ),
             ))
 
@@ -735,9 +774,9 @@ with st.spinner('Carregando gráfico...'):
                 customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
                 hovertemplate=(
                     "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
-                    "Valor: %{customdata[2]:.,1f}<br>"  # Exibe a capacidade restante formatada
-                    "Capacidade utilizada: %{customdata[0]:.,1f} %<br>"  # Exibe o valor de customdata (percentual)
-                    "Capacidade restante: %{customdata[4]:.,1f}<br>"  # Exibe o valor da capacidade restante formatado
+                    "EARM: %{customdata[2]:.,0f}<br>"  # Exibe a capacidade restante formatada
+                    "Capacidade Máxima: %{customdata[4]:.,0f}<br>"  # Exibe o valor da capacidade restante formatado
+                    "Capacidade Utilizada: %{customdata[0]:.,1f}%<br>"  # Exibe o valor de customdata (percentual)
                 ),
                 showlegend=False,
             ))
@@ -823,7 +862,7 @@ with st.spinner('Carregando gráfico...'):
                 yaxis_tickmode='array',
                 yaxis_nticks=5
             )        
-            st.plotly_chart(fig_bottom)
+            st.plotly_chart(fig_bottom, config=config)
 
     else:
         st.write("Nenhum dado disponível para os filtros selecionados.")
