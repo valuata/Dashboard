@@ -69,14 +69,14 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 70%;
+            width: 50%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 70%;
+            width: 50%;
             outline: none;
             border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
         }
@@ -103,11 +103,11 @@ st.markdown("""
         }
         hr {
             border: 0;
-            height: 2px;
+            height: 0.7px !important;
             background-color: #67AEAA;  /* Cor do tracinho */
         }
         div[data-baseweb="select"] {
-            width: 90%;
+            width: 60%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
@@ -123,6 +123,14 @@ st.markdown("""
         footer {visivility: hidden;}
     </style>
 """, unsafe_allow_html=True)
+
+config = {
+    'displaylogo': False,    # Desabilita o logo Plotly na barra
+    'modeBarButtonsToRemove': ['zoomIn2d', 'zoomOut2d', 'lasso2d', 'select2d'],  # Remove botões de zoom
+    'modeBarButtonsToAdd': ['resetScale2d'],  # Adiciona um botão para resetar o gráfico
+    'showTips': False,        # Desabilita dicas de ferramenta
+    'responsive': False      # Desabilita o redimensionamento automático
+}
 
 # Page Config
 st.title("Curva Forward")
@@ -302,7 +310,9 @@ exibir_tabela_variacao(filtered_data, submercado_selecionado, tipo_energia)
 
 
 
+st.write("")
 st.write("---")
+st.write("")
 # Agora vamos criar o gráfico de histórico
 st.subheader("Histórico de preços de energia para o ano selecionado")
 
@@ -430,12 +440,14 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
             )
 
             # Exibindo o gráfico
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config=config)
 
 with st.spinner('Carregando gráfico...'):
     plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia)
 
+st.write('')
 st.write('---')
+st.write('')
 
 # Função para formatar os números conforme o padrão português (Brasil)
 def format_number(num):
@@ -521,7 +533,7 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
     )
     
     # Exibindo o gráfico
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=config)
 
 # Chamando a função para gerar o gráfico histórico para diferentes previsões
 with st.spinner('Carregando gráfico...'):
