@@ -45,16 +45,19 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 70%;
+            width: 50%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 70%;
+            width: 50%;
             outline: none;
             border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        .stDateInput div {
+            border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
         }
         .stDownloadButton>button {
             background-color: #67AEAA; /* Cor de fundo */
@@ -83,7 +86,7 @@ st.markdown("""
             background-color: #67AEAA;  /* Cor do tracinho */
         }
         div[data-baseweb="select"] {
-            width: 100%;
+            width: 80%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
@@ -99,6 +102,14 @@ st.markdown("""
         footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
+
+config = {
+    'displaylogo': False,    # Desabilita o logo Plotly na barra
+    'modeBarButtonsToRemove': ['zoomIn2d', 'zoomOut2d', 'lasso2d', 'select2d'],  # Remove botões de zoom
+    'modeBarButtonsToAdd': ['resetScale2d'],  # Adiciona um botão para resetar o gráfico
+    'showTips': False,        # Desabilita dicas de ferramenta
+    'responsive': False      # Desabilita o redimensionamento automático
+}
 
 
 def aggregate_data(data, frequency):
@@ -119,9 +130,9 @@ def aggregate_data(data, frequency):
 def format_week_date(date):
     # Calcula o número da semana dentro do mês
     week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
-    return f"S{week_number}/{format_date(date, format='MMM/yyyy', locale='pt_BR').upper()}"
+    return f"S{week_number}/{format_date(date, format='MM/yyyy', locale='pt_BR').upper()}"
 def format_month_date(date):
-    return format_date(date, format='MMM/yyyy', locale='pt_BR').upper()
+    return format_date(date, format='MM/yyyy', locale='pt_BR').upper()
 def format_daily_date(date):
     return date.strftime('%d/%m/%Y')
 
@@ -211,6 +222,7 @@ with coldownload:
     st.write("")
     st.write("")
 
+# Garantir que a coluna 'din_instante' seja convertida corretamente para datetime
 carga_data['din_instante'] = pd.to_datetime(carga_data['din_instante'].str.slice(0, 10), format="%Y-%m-%d")
 
 # Controlador de intervalo de datas
@@ -220,33 +232,47 @@ max_date = carga_data['din_instante'].max().date()
 # Calcular o intervalo de 5 anos atrás
 start_date_default = max_date.replace(year=max_date.year - 5, month=1, day=1)
 
-# Slider de intervalo de datas
+# Selecione o intervalo de datas usando um slider
+if 'slider_dates' not in st.session_state:
+    st.session_state.slider_dates = (start_date_default, max_date)
+
 start_date_slider, end_date_slider = st.slider(
     "**Selecione o intervalo de datas**",
     min_value=min_date,
     max_value=max_date,
-    value=(start_date_default, max_date),
+    value=st.session_state.slider_dates,
     format="DD/MM/YYYY"
 )
 
+# Atualizar os valores dos date inputs conforme o slider
+st.session_state.slider_dates = (start_date_slider, end_date_slider)
+
+# Colunas de layout para os controles
 col3, col4, col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
     frequency = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2)  # Start with 'Mensal'
 with col2:
     selected_subsystems = st.multiselect(
-        "**Selecione os subsmercado**",
+        "**Selecione os submercados**",
         options=['SE/CO', 'S', 'NE', 'N'],
-        default=['SE/CO', 'S', 'NE', 'N'], placeholder= 'Escolha uma opção'  # Seleção padrão
+        default=['SE/CO', 'S', 'NE', 'N'], placeholder='Escolha uma opção'  # Seleção padrão
     )
 with col3:
+    # Atualiza o valor do date input para o valor do slider
     start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
+    if start_date_input != start_date_slider:
+        st.session_state.slider_dates = (start_date_input, end_date_slider)  # Atualiza o slider com a nova data
+        st.rerun()  # Força a atualização imediata
 with col4:
+    # Atualiza o valor do date input para o valor do slider
     end_date_input = st.date_input("**Fim**", min_value=min_date, max_value=max_date, value=end_date_slider, format="DD/MM/YYYY")
+    if end_date_input != end_date_slider:
+        st.session_state.slider_dates = (start_date_slider, end_date_input)  # Atualiza o slider com a nova data
+        st.rerun()  # Força a atualização imediata
 
-# Filtrar os dados com base no intervalo de datas selecionado
+# Filtragem dos dados com base nas datas selecionadas
 filtered_data = carga_data[(carga_data['din_instante'] >= pd.to_datetime(start_date_input)) & 
                            (carga_data['din_instante'] <= pd.to_datetime(end_date_input))]
-
 # Agregar os dados com base na frequência selecionada
 agg_data = aggregate_data(filtered_data, frequency)
 
@@ -300,11 +326,11 @@ with st.spinner('Carregando gráfico...'):
                                 (ne_val[0] if len(ne_val) > 0 else 0) + \
                                 (n_val[0] if len(n_val) > 0 else 0)
                         custom_data.append([formatted_date,
-                            format_decimal(se_val[0] if len(se_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
-                            format_decimal(s_val[0] if len(s_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
-                            format_decimal(ne_val[0] if len(ne_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
-                            format_decimal(n_val[0] if len(n_val) > 0 else 0, locale='pt_BR', format="#,##0.0"),
-                            format_decimal(sum_val, locale='pt_BR', format="#,##0.0")
+                            format_decimal(se_val[0] if len(se_val) > 0 else 0, locale='pt_BR', format="#,##0."),
+                            format_decimal(s_val[0] if len(s_val) > 0 else 0, locale='pt_BR', format="#,##0."),
+                            format_decimal(ne_val[0] if len(ne_val) > 0 else 0, locale='pt_BR', format="#,##0."),
+                            format_decimal(n_val[0] if len(n_val) > 0 else 0, locale='pt_BR', format="#,##0."),
+                            format_decimal(sum_val, locale='pt_BR', format="#,##0.")
                         ])
 
                     # Cor específica para o subsistema
@@ -405,7 +431,7 @@ with st.spinner('Carregando gráfico...'):
         )
 
         # Exibir o gráfico
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=config)
     else:
         st.write("Sem informações disponíveis para a filtragem feita.")
 
