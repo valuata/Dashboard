@@ -383,10 +383,18 @@ with st.spinner('Carregando gráfico...'):
             num_ticks = 5  # Quantidade de ticks desejados
 
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (agg_data['din_instante'].max() - agg_data['din_instante'].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'W-SAT'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=agg_data['din_instante'].min(), 
                 end=agg_data['din_instante'].max(), 
-                freq=f'{int((agg_data["din_instante"].max() - agg_data["din_instante"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
 
             # Formatar as datas para o formato desejado
@@ -403,12 +411,19 @@ with st.spinner('Carregando gráfico...'):
             num_ticks = 5  # Quantidade de ticks desejados
 
             # Selecione as datas para exibir no eixo X com base no número de ticks
+            days_diff = (agg_data['din_instante'].max() - agg_data['din_instante'].min()).days
+
+            # Ensure we don't divide by zero
+            if days_diff == 0:
+                freq = 'M'  # Default to daily if the date range is only one day
+            else:
+                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+
             tick_dates = pd.date_range(
                 start=agg_data['din_instante'].min(), 
                 end=agg_data['din_instante'].max(), 
-                freq=f'{int((agg_data["din_instante"].max() - agg_data["din_instante"].min()).days / num_ticks)}D'  # Frequência calculada automaticamente
+                freq=freq
             )
-
             # Formatar as datas para o formato desejado
             formatted_ticks = [format_month_date(date) for date in tick_dates]
 
