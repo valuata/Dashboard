@@ -341,10 +341,12 @@ def format_number(num):
 def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
     col1, col2 = st.columns(2)  # Criando duas colunas para os gráficos
     
-    # Inicializando variáveis para as datas do eixo X
-    all_start_date = None
-    all_end_date = None
-    aux = 0
+    # Definindo o intervalo fixo de 7 anos para todos os gráficos
+    all_start_date = pd.Timestamp(f'{ano_selecionado - 3}-01-01')  # 3 anos antes do ano selecionado
+    all_end_date = pd.Timestamp(f'{ano_selecionado + 3}-12-31')    # 3 anos após o ano selecionado
+    tick_years = [ano_selecionado - 3 + i for i in range(7)]  # Anos entre 3 anos antes e 3 anos depois
+    
+    # Definir o valor máximo para o eixo Y
     max_value = 0
 
     # Filtrando os dados para o submercado selecionado
@@ -374,11 +376,7 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                     # Filtrando os dados do ano correspondente
                     prev_year_data = all_data[(all_data['DIA'].dt.year == ano_previsto_atual) & 
                                                (col_name in all_data.columns)]
-                    if j == 0 and i == 0:
-                        last_date = (prev_year_data['DIA'].max()+ pd.DateOffset(years=9))+ pd.offsets.YearEnd(0)
-                    if j == 3 and i == 0:
-                        first_date = prev_year_data['DIA'].min()
-                    aux = prev_year_data[col_name].max()
+                    aux = prev_year_data[col_name].max() if not prev_year_data.empty else 0
                     if aux >= max_value:
                         max_value = aux
                     # Verificando se há dados para o ano e submercado
@@ -389,11 +387,6 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                         combined_dates.extend(prev_year_data['DIA'])
                         combined_values.extend(prev_year_data[col_name])
 
-            # Se for o primeiro gráfico, armazene as datas do primeiro gráfico para uso nos outros
-            if i == 0:
-                all_start_date = first_date
-                all_end_date = last_date
-
             # Criando o gráfico com a linha combinada
             fig = go.Figure()
 
@@ -403,7 +396,7 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                 y=combined_values, 
                 mode='lines',
                 line=dict(color="#67aeaa"),  # Cor das linhas
-                hovertemplate=(
+                hovertemplate=( 
                     '%{x|%d/%m/%Y}<br>' +  # Formatação da data
                     'Preço: %{customdata}<extra></extra>'
                 ),
@@ -417,25 +410,22 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                 showlegend=False,
                 yaxis=dict(
                     autorange=False,   # Permite que o valor máximo do eixo Y seja ajustado automaticamente
-                    range=[0, max_value+10]   # Força o valor mínimo do eixo Y a começar em 0
+                    range=[0, max_value + 10]   # Força o valor mínimo do eixo Y a começar em 0
                 ),
                 xaxis=dict(
                     tickformat="%d/%m/%Y",
-                    range=[all_start_date, None]  # Definindo o intervalo fixo para o eixo X
+                    range=[all_start_date, all_end_date]  # Definindo o intervalo fixo para o eixo X
                 )
             )
 
-            num_ticks = 20  # Quantidade de ticks desejados
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            tick_dates = pd.date_range(
-                start=all_start_date, 
-                end=all_end_date, 
-                freq=f'{int((all_end_date - all_start_date).days / num_ticks)}D'  # Frequência calculada automaticamente
-            )
+            # Gerar os 7 anos como ticks no eixo X
+            tick_dates = pd.to_datetime([f'{year}-01-01' for year in tick_years])
+
             # Atualizar o eixo X para usar essas datas formatadas
             fig.update_xaxes(
                 tickmode='array',
                 tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
+                ticktext=[str(year) for year in tick_years],  # Exibir os anos como texto
                 tickangle=0
             )
 
@@ -535,12 +525,26 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
     # Exibindo o gráfico
     st.plotly_chart(fig, use_container_width=True, config=config)
 
-# Chamando a função para gerar o gráfico histórico para diferentes previsões
-with st.spinner('Carregando gráfico...'):
-    plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+1')
-with st.spinner('Carregando gráfico...'):
-    plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+2')
-with st.spinner('Carregando gráfico...'):
-    plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+3')
-with st.spinner('Carregando gráfico...'):
-    plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+4')
+st.subheader("Histórico de preços de energia")
+
+columns = st.columns(2)
+
+# Usando as colunas no layout
+with columns[0]:
+    with st.spinner('Carregando gráfico...'):
+        plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+1')
+
+with columns[1]:
+    with st.spinner('Carregando gráfico...'):
+        plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+2')
+
+# Definindo mais duas colunas para A3 e A4
+columns_2 = st.columns(2)
+
+with columns_2[0]:
+    with st.spinner('Carregando gráfico...'):
+        plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+3')
+
+with columns_2[1]:
+    with st.spinner('Carregando gráfico...'):
+        plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+4')
