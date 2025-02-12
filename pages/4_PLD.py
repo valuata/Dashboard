@@ -47,10 +47,41 @@ st.markdown("""
         .stDateInput input:focus {
             width: 50%;
             outline: none;
-            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+            border: 1px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        p{
+            margin: 1px 0px 1rem;
+            padding: 0px;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+        .st-b1 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b2 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b3 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b4 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
         }
         .stDateInput div {
             border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
+        }
+        .stRadio>div>label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stRadio>div>label>div {
+            display: flex;
+            align-items: center;
         }
         .stDownloadButton>button {
             background-color: #67AEAA; /* Cor de fundo */
@@ -235,6 +266,8 @@ else:
     avg_values_per_submarket_graph = go.Figure()
     
     def grafico1(variavel):
+        min_y = 0
+        max_y = min_y
         for submarket, color in zip(reversed(submarket_order), reversed(colors)):  # Ordem de sobreposição invertida (de baixo para cima)
             if submarket in selected_submarkets:
                 submarket_data = filtered_avg_values[filtered_avg_values['Submercado'] == submarket]
@@ -251,6 +284,7 @@ else:
                             # Asegurando que o valor existe (não vazio) para o submercado
                             sm_value = format_decimal(sm_data['Valor'].values[0] if len(sm_data) > 0 else None, locale='pt_BR', format="#,##0.00")
                             sub_values.append(sm_value)
+                            max_y = max(max_y, sm_data['Valor'].values[0])
                         else:
                             sub_values.append(None)
     
@@ -421,10 +455,27 @@ else:
             template='plotly_dark',
             hoverlabel=dict(
                 align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+            )
+        )
+        tick_interval = (max_y - min_y) / 5  # Dividir o intervalo em 5 partes
+
+        # Gerar uma lista de valores para os ticks do eixo Y
+        tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+
+        # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+
+        # Atualizar o layout do gráfico com os valores dinâmicos
+        avg_values_per_submarket_graph.update_layout(
+            yaxis=dict(
+                tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                ticktext=formatted_ticks,  # Textos dos ticks formatados
+                ticks="inside",  # Exibir os ticks dentro do gráfico
+                tickangle=0,     # Manter os ticks na horizontal
+                nticks=6,        # Número de ticks desejados
             ),
-            yaxis_tickformat='.,0f',
-            yaxis_tickmode='array',
-            yaxis_nticks=5
         )
     
         # Exibir o gráfico de valores médios
@@ -437,7 +488,9 @@ else:
             grafico1("Data")
 
 st.write("")
+st.write("")
 st.write("---")
+st.write("")
 st.write("")
 
 # Submarket selection for candlestick chart
@@ -577,7 +630,8 @@ with st.spinner('Carregando gráfico...'):
     if not agg_data.empty:
         # Lista para armazenar as datas formatadas
         formatted_dates = []
-        
+        min_y = 0
+        max_y2 = min_y
         # Formatar as datas de acordo com o período (Semanal ou Mensal)
         if frequency_bottom == 'Semanal':
             formatted_dates = [format_week_date(date) for date in agg_data['Data']]
@@ -597,11 +651,11 @@ with st.spinner('Carregando gráfico...'):
             text=formatted_data[['Data','Open', 'High', 'Low', 'Close', 'Mean']].apply(
                 lambda row: (
                     f"Data: {formatted_dates[agg_data.index.get_loc(row.name)]}<br>"  # Usando a data formatada
-                    f"Abertura:R$ {row['Open']}<br>"
-                    f"Máximo:R$ {row['High']}<br>"
-                    f"Mínimo:R$ {row['Low']}<br>"
-                    f"Fechamento:R$ {row['Close']}<br>"
-                    f"Média:R$ {row['Mean']}"
+                    f"Abertura: R$ {row['Open']}<br>"
+                    f"Máximo: R$ {row['High']}<br>"
+                    f"Mínimo: R$ {row['Low']}<br>"
+                    f"Fechamento: R$ {row['Close']}<br>"
+                    f"Média: R$ {row['Mean']}"
                 ), axis=1
             ),  # Passando os valores de cada linha para o hover
             hoverinfo='text'  # Usar o campo 'text' para exibir as informações
@@ -609,6 +663,7 @@ with st.spinner('Carregando gráfico...'):
 
         # Adicionar a linha whisker com maior alcance horizontal e hover do valor médio
         for i in range(len(agg_data)):
+            max_y2 = max(max_y2, agg_data['High'][i])
             # Ajustar o próximo ponto de data para estender a linha (exemplo: 1 dia para diário)
             if frequency_bottom == "Mensal":
                 next_x = agg_data['Data'][i] + timedelta(weeks=4)  # Aumentar o intervalo para 4 semanas
@@ -691,6 +746,26 @@ with st.spinner('Carregando gráfico...'):
                 tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
                 ticktext=formatted_ticks,  # Usar as datas formatadas
                 tickangle=0
+            )
+            tick_interval = (max_y2 - min_y) / 5  # Dividir o intervalo em 5 partes
+
+            # Gerar uma lista de valores para os ticks do eixo Y
+            tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+
+            # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+            formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+
+            # Atualizar o layout do gráfico com os valores dinâmicos
+            fig.update_layout(
+                yaxis=dict(
+                    tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                    tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                    tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                    ticktext=formatted_ticks,  # Textos dos ticks formatados
+                    ticks="inside",  # Exibir os ticks dentro do gráfico
+                    tickangle=0,     # Manter os ticks na horizontal
+                    nticks=6,        # Número de ticks desejados
+                ),
             )
 
         # Exibir o gráfico candlestick
