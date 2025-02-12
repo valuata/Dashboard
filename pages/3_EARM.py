@@ -48,10 +48,35 @@ st.markdown("""
         .stDateInput input:focus {
             width: 50%;
             outline: none;
-            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+            border: 1px solid #67AEAA; /* Mantém a borda quando está em foco */
         }
         .stDateInput div {
             border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
+        }
+        .st-b1 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b2 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b3 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b4 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .stRadio>div>label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stRadio>div>label>div {
+            display: flex;
+            align-items: center;
         }
         .stDownloadButton>button {
             background-color: #67AEAA; /* Cor de fundo */
@@ -74,6 +99,12 @@ st.markdown("""
             outline: none; /* Remover contorno ao focar */
             border: 2px solid #56A798; /* Cor da borda quando focado */
         }
+        p{
+            margin: 1px 0px 1rem;
+            padding: 0px;
+            font-size: 1rem;
+            font-weight: 400;
+        } 
         hr {
             border: 0;
             height: 0.7px !important;
@@ -356,9 +387,15 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
             df_earm = pd.concat([df_earm, dados_earm])
         i = i + 1
     df_earm.drop(columns= 'nom_subsistema', inplace=True)
-    sum_ear_verif_subsistema_mwmes = df_earm['ear_verif_subsistema_mwmes'].sum()
-    sum_ear_max_subsistema = df_earm['ear_max_subsistema'].sum()
 
+    sum_seco = df_earm[df_earm['id_subsistema'] == 'SE']
+    sum_s = df_earm[df_earm['id_subsistema'] == 'S']
+    sum_ne = df_earm[df_earm['id_subsistema'] == 'NE']
+    sum_n = df_earm[df_earm['id_subsistema'] == 'N']
+    sum_ear_verif_subsistema_mwmes = (sum_seco['ear_verif_subsistema_mwmes'].iloc[-1] + sum_s['ear_verif_subsistema_mwmes'].iloc[-1] +
+    sum_ne['ear_verif_subsistema_mwmes'].iloc[-1] +sum_n['ear_verif_subsistema_mwmes'].iloc[-1])
+    sum_ear_max_subsistema = (sum_seco['ear_max_subsistema'].iloc[-1] + sum_s['ear_max_subsistema'].iloc[-1] +
+    sum_ne['ear_max_subsistema'].iloc[-1] +sum_n['ear_max_subsistema'].iloc[-1])
     # Step 2: Add a new column with the ratio
     df_earm['verif_max_ratio'] = (sum_ear_verif_subsistema_mwmes / sum_ear_max_subsistema)*100
 
@@ -391,6 +428,7 @@ for idx, fig in enumerate(fig_atual_sim):
     columns[idx].plotly_chart(fig)
 
 st.write("---")
+st.write("")
 st.write("")
 
 min_date = earm_data['ear_data'].min().date()
@@ -474,7 +512,8 @@ with st.spinner('Carregando gráfico...'):
             'NE': '#6b8b89',
             'N': '#a3d5ce'
         }
-    
+        max_y =0
+        min_y = 0
         # Iterando pelos subsistemas e criando as barras
         for i, subsystem in enumerate(subsystems_order):
             if subsystem in selected_subsystems:  # Verificar se o subsistema foi selecionado
@@ -497,7 +536,7 @@ with st.spinner('Carregando gráfico...'):
                                   ((s_val[0] if len(s_val) > 0 else 0)if 'S' in selected_subsystems else 0) + \
                                   ((ne_val[0] if len(ne_val) > 0 else 0)if 'NE' in selected_subsystems else 0) + \
                                   ((n_val[0] if len(n_val) > 0 else 0)if 'N' in selected_subsystems else 0)
-                        
+                        max_y = max(max_y, sum_val)
                         custom_data.append([format_decimal(se_val[0] if len(se_val) > 0 else 0, locale='pt_BR', format="#,##0."),
                                             format_decimal(s_val[0] if len(s_val) > 0 else 0, locale='pt_BR', format="#,##0."),
                                             format_decimal(ne_val[0] if len(ne_val) > 0 else 0, locale='pt_BR', format="#,##0."),
@@ -538,7 +577,7 @@ with st.spinner('Carregando gráfico...'):
         fig_stacked.update_layout(
             title=f"EARM - {metric} ({frequency})",
             yaxis_title=metric,
-            yaxis_tickformat=",.0f",  # Adicionando separador de milhar com ponto
+            yaxis_tickformat=",.1f",  # Adicionando separador de milhar com ponto
             barmode='stack',  # Empilhamento das barras
             xaxis=dict(tickformat=xaxis_format),  # Formatação da data no eixo X
             legend=dict(
@@ -639,18 +678,38 @@ with st.spinner('Carregando gráfico...'):
         fig_stacked.update_layout(
             hoverlabel=dict(
                 align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
-            ),
-            yaxis_tickformat='.,0f',
-            yaxis_tickmode='array',
-            yaxis_nticks=5
+            )
         )
+        tick_interval = (max_y - min_y) / 5  # Dividir o intervalo em 5 partes
+
+        # Gerar uma lista de valores para os ticks do eixo Y
+        tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+
+        # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+
+        # Atualizar o layout do gráfico com os valores dinâmicos
+        fig_stacked.update_layout(
+            yaxis=dict(
+                tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                ticktext=formatted_ticks,  # Textos dos ticks formatados
+                ticks="inside",  # Exibir os ticks dentro do gráfico
+                tickangle=0,     # Manter os ticks na horizontal
+                nticks=6,        # Número de ticks desejados
+            ),
+        )
+
         # Exibindo o gráfico
         st.plotly_chart(fig_stacked, config=config)
     else:
         st.write("Nenhum dado disponível para os filtros selecionados.")
 
 st.write("")
+st.write("")
 st.write("---")
+st.write("")
 st.write("")
 
 min_date_bottom = earm_data['ear_data'].min().date()
@@ -773,7 +832,7 @@ with st.spinner('Carregando gráfico...'):
             subsystem_data_bottom['formatted_value'] = subsystem_data_bottom['ear_verif_subsistema_mwmes'].apply(format_value)
             subsystem_data_bottom['formatted_remaining_capacity'] = capacity.apply(format_value)
             subsystem_data_bottom['ear_verif_subsistema_percentual'] = subsystem_data_bottom['ear_verif_subsistema_percentual'].apply(format_value_perc)
-
+            max_y2 = max(capacity)
             # Barra de valor principal (barra de cima)
             fig_bottom.add_trace(go.Bar(
                 x=subsystem_data_bottom['ear_data'], 
@@ -904,10 +963,27 @@ with st.spinner('Carregando gráfico...'):
             fig_bottom.update_layout(
                 hoverlabel=dict(
                     align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+                )
+            )
+            tick_interval = (max_y2 - min_y) / 5  # Dividir o intervalo em 5 partes
+
+            # Gerar uma lista de valores para os ticks do eixo Y
+            tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+
+            # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+            formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+
+            # Atualizar o layout do gráfico com os valores dinâmicos
+            fig_bottom.update_layout(
+                yaxis=dict(
+                    tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                    tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                    tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                    ticktext=formatted_ticks,  # Textos dos ticks formatados
+                    ticks="inside",  # Exibir os ticks dentro do gráfico
+                    tickangle=0,     # Manter os ticks na horizontal
+                    nticks=6,        # Número de ticks desejados
                 ),
-                yaxis_tickformat='.,0f',
-                yaxis_tickmode='array',
-                yaxis_nticks=5
             )        
             st.plotly_chart(fig_bottom, config=config)
 
