@@ -54,10 +54,41 @@ st.markdown("""
         .stDateInput input:focus {
             width: 50%;
             outline: none;
-            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+            border: 1px solid #67AEAA; /* Mantém a borda quando está em foco */
+        }
+        p{
+            margin: 1px 0px 1rem;
+            padding: 0px;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+        .st-b1 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b2 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b3 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b4 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
         }
         .stDateInput div {
             border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
+        }
+        .stRadio>div>label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stRadio>div>label>div {
+            display: flex;
+            align-items: center;
         }
         .stDownloadButton>button {
             background-color: #67AEAA; /* Cor de fundo */
@@ -99,7 +130,7 @@ st.markdown("""
         }
         [data-testid="stForm"] {border: 0px}
         #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
+        footer {visivility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -214,13 +245,8 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
 
 carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
 # Carregar os dados
-coltitle, coldownload= st.columns([8, 1])
-with coltitle:
-    st.title("Carga")
 
-with coldownload:
-    st.write("")
-    st.write("")
+st.title("Carga")
 
 # Garantir que a coluna 'din_instante' seja convertida corretamente para datetime
 carga_data['din_instante'] = pd.to_datetime(carga_data['din_instante'].str.slice(0, 10), format="%Y-%m-%d")
@@ -300,7 +326,7 @@ with st.spinner('Carregando gráfico...'):
 
         # Definir a ordem desejada dos subsistemas para a legenda
         desired_subsystems_order = ['SE/CO', 'S', 'NE', 'N']
-
+        max_brasil = 0
         # Adicionar uma trace para cada subsistema na ordem desejada
         for subsystem in desired_subsystems_order:
             if subsystem in subsystems:
@@ -325,6 +351,7 @@ with st.spinner('Carregando gráfico...'):
                                 (s_val[0] if len(s_val) > 0 else 0) + \
                                 (ne_val[0] if len(ne_val) > 0 else 0) + \
                                 (n_val[0] if len(n_val) > 0 else 0)
+                        max_brasil = max(max_brasil, sum_val)
                         custom_data.append([formatted_date,
                             format_decimal(se_val[0] if len(se_val) > 0 else 0, locale='pt_BR', format="#,##0."),
                             format_decimal(s_val[0] if len(s_val) > 0 else 0, locale='pt_BR', format="#,##0."),
@@ -366,10 +393,37 @@ with st.spinner('Carregando gráfico...'):
                 y=-0.5,
                 xanchor="center",
                 x=0.5,
-                traceorder="normal"  # Garante que a ordem da legenda seja conforme o esperado
+                traceorder="normal"
             ),
-            width=1200
+            width=1200,
+            yaxis_tickformat=",.1f",  # Formatar o eixo Y para exibir uma casa decimal e separadores de milhar
         )
+
+        min_y = 0
+        max_y = max_brasil
+        # Definir o intervalo dos ticks (por exemplo, de 0 a 20k com intervalos de 5k)
+        tick_interval = (max_y - min_y) / 5  # Dividir o intervalo em 5 partes
+
+        # Gerar uma lista de valores para os ticks do eixo Y
+        tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+
+        # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+
+        # Atualizar o layout do gráfico com os valores dinâmicos
+        fig.update_layout(
+            yaxis=dict(
+                tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                ticktext=formatted_ticks,  # Textos dos ticks formatados
+                ticks="inside",  # Exibir os ticks dentro do gráfico
+                tickangle=0,     # Manter os ticks na horizontal
+                nticks=6,        # Número de ticks desejados
+            ),
+        )
+
+
 
         # Ajustar os eixos x com base na frequência
         if frequency == 'Diário':
