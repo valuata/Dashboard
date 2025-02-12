@@ -403,12 +403,13 @@ with st.spinner('Carregando gráfico...'):
         max_y = max_brasil
         # Definir o intervalo dos ticks (por exemplo, de 0 a 20k com intervalos de 5k)
         tick_interval = (max_y - min_y) / 5  # Dividir o intervalo em 5 partes
-
+        import math
         # Gerar uma lista de valores para os ticks do eixo Y
         tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+        tick_vals_rounded = [math.ceil(val / 5000) * 5000 for val in tick_vals]
 
         # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
-        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
 
         # Atualizar o layout do gráfico com os valores dinâmicos
         fig.update_layout(
