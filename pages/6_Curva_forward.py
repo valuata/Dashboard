@@ -96,7 +96,22 @@ st.markdown("""
             background-color: #FFFFFF; /* Mudar cor de fundo ao passar o mouse */
             border-color: #56A798; /* Mudar cor da borda */
         }
-
+        .st-b1 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 10px;         /* Bordas arredondadas */
+        }
+        .st-b2 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 10px;         /* Bordas arredondadas */
+        }
+        .st-b3 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 10px;         /* Bordas arredondadas */
+        }
+        .st-b4 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 10px;         /* Bordas arredondadas */
+        }
         .stDownloadButton>button:focus {
             outline: none; /* Remover contorno ao focar */
             border: 2px solid #56A798; /* Cor da borda quando focado */
@@ -105,6 +120,21 @@ st.markdown("""
             border: 0;
             height: 0.7px !important;
             background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        .stRadio>div>label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stRadio>div>label>div {
+            display: flex;
+            align-items: center;
+        }
+        p{
+            margin: 1px 0px 1rem;
+            padding: 0px;
+            font-size: 1rem;
+            font-weight: 400;
         }
         div[data-baseweb="select"] {
             width: 60%;
@@ -153,7 +183,7 @@ all_data['DIA'] = pd.to_datetime(all_data['DIA'], format='%Y-%m-%d')
 submercados = ['SE/CO', 'Sul', 'Nordeste', 'Norte']
 
 # Layout para os filtros lado a lado
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 def formatar_valor_brl(valor):
     return format_currency(valor, 'BRL', locale='pt_BR')
 # Filtros de Submercado, Mês, Semana e Tipo de Energia
@@ -161,16 +191,12 @@ with col1:
     submercado_selecionado = st.selectbox("**Submercado**", submercados)
     
 with col2:
-    meses = all_data['MÊS'].unique()
-    mes_selecionado = st.selectbox("**Mês**", meses)
-
-with col3:
-    semanas = all_data[(all_data['MÊS'] == mes_selecionado)]['SEMANA'].unique()
-    semana_selecionada = st.selectbox("**Semana**", semanas)
-
-with col4:
     tipo_energia = st.selectbox("**Tipo de energia**", ['Convencional', 'Incentivada'])
 
+meses = all_data['MÊS'].unique()
+mes_selecionado = meses[-1]
+semanas = all_data[(all_data['MÊS'] == mes_selecionado)]['SEMANA'].unique()
+semana_selecionada = semanas[-1]
 # Filtro de dados com base nos filtros selecionados
 filtered_data = all_data[(all_data['MÊS'] == mes_selecionado) & 
                           (all_data['SEMANA'] == semana_selecionada) & 
@@ -185,9 +211,6 @@ if filtered_data.empty:
     st.write("Nenhum dado encontrado para a combinação selecionada.")
 else:
     # Cards de A+1, A+2, A+3, A+4 e preços de 1 e 4 semanas atrás
-    st.subheader("Preços para a data selecionada")
-
-    # Adicionar função para calcular a variação percentual
     def calcular_variacao_percentual(valor_atual, valor_anterior):
         if valor_anterior is None or valor_anterior == 0:
             return None  # Evitar divisão por zero ou valores nulos
@@ -206,119 +229,77 @@ else:
             if col_name in data_anteriores.columns:
                 return data_anteriores[col_name].values[0]
         return None
-
-    # Cards para exibir valores e variações
-    def exibir_cards_variacao(filtered_data, submercado_selecionado, tipo_energia):
-        dia_atual = filtered_data['DIA'].iloc[0]  # Pegando a data atual da seleção
-        col1, col2, col3, col4 = st.columns(4)
-        ano_base = int(mes_selecionado.split('/')[1])
-        for i in range(1, 5):
-            col_name = f'{submercado_selecionado} {tipo_energia} A+{i}'
-            if col_name in filtered_data.columns:
-                valor_atual = filtered_data[col_name].values[0]
-                with eval(f'col{i}'):
-                    st.metric(f"{ano_base + i} (A+{i})", formatar_valor_brl(valor_atual), delta="")
-
-                # Card de 1 semana atrás
-                value_1_week_ago = get_previous_week_data(dia_atual, submercado_selecionado, tipo_energia, 1, preco_coluna=f'A+{i}')
-                if value_1_week_ago is not None:
-                    var_1_week = calcular_variacao_percentual(valor_atual, value_1_week_ago)
-                    cor_1_week = 'normal' if var_1_week > 0 else 'normal'
-                    with eval(f'col{i}'):
-                        st.metric(f"{ano_base +i} (1 semana atrás)", formatar_valor_brl(value_1_week_ago), delta=f"{var_1_week:.2f}%", delta_color=cor_1_week)
-
-                # Card de 4 semanas atrás
-                value_4_weeks_ago = get_previous_week_data(dia_atual, submercado_selecionado, tipo_energia, 4, preco_coluna=f'A+{i}')
-                if value_4_weeks_ago is not None:
-                    var_4_weeks = calcular_variacao_percentual(valor_atual, value_4_weeks_ago)
-                    cor_4_weeks = 'normal' if var_4_weeks > 0 else 'normal'
-                    with eval(f'col{i}'):
-                        st.metric(f"{ano_base + i} (4 semanas atrás)", formatar_valor_brl(value_4_weeks_ago), delta=f"{var_4_weeks:.2f}%", delta_color=cor_4_weeks)
-
-    # Exibição dos cards com variação
-    exibir_cards_variacao(filtered_data, submercado_selecionado, tipo_energia)
-
-
-
-#AAAAAAAAAAAA AQUI COMEÇA A TABELAAAAAAAAAAAA
-#AAAAAAAAAAAA AQUI COMEÇA A TABELAAAAAAAAAAAA
-#AAAAAAAAAAAA AQUI COMEÇA A TABELAAAAAAAAAAAA
-# Função para formatar a variação com setas Unicode
-def formatar_variacao(variacao):
-    if variacao is None:
-        return "N/A"
-    elif variacao > 0:
-        return f"\u2191 {format_decimal(variacao, locale='pt_BR', format="#,##0.0")}%"  # Seta para cima (Unicode)
-    elif variacao < 0:
-        return f"\u2193 {format_decimal(variacao, locale='pt_BR', format="#,##0.0")}%"  # Seta para baixo (Unicode)
-    return f"{format_decimal(variacao, locale='pt_BR', format="#,##0.0")}%"
-
-# Função para obter os valores de 1 e 4 semanas atrás
-def get_previous_week_data(dia, submercado, tipo_energia, semanas_antes=1, preco_coluna='A+1'):
-    dia_antes = dia - timedelta(weeks=semanas_antes)  # Calculando a data de semanas atrás
-    data_anteriores = all_data[(all_data['DIA'] == dia_antes) & 
-                               (all_data['Tipo Energia'] == tipo_energia)]
+def get_previous_year_data(dia, submercado, tipo_energia, preco_coluna='A+1'):
+    # Filtra os dados de 52 semanas atrás
+    dia_ano_antes = dia - timedelta(weeks=52)  # Calculando a data de 52 semanas atrás
+    data_ano_anteriores = all_data[(all_data['DIA'] == dia_ano_antes) & 
+                                   (all_data['Tipo Energia'] == tipo_energia)]
 
     # Verifica se existe algum dado para essa data e submercado
-    if not data_anteriores.empty:
+    if not data_ano_anteriores.empty:
         col_name = f'{submercado} {tipo_energia} {preco_coluna}'
-        if col_name in data_anteriores.columns:
-            return data_anteriores[col_name].values[0]
+        if col_name in data_ano_anteriores.columns:
+            return data_ano_anteriores[col_name].values[0]
     return None
-# Função para exibir a tabela com os valores e variações
-def exibir_tabela_variacao(filtered_data, submercado_selecionado, tipo_energia):
+
+# Modificando a função que exibe os cards para incluir a variação de 52 semanas atrás
+# Modificando a função para exibir cada "A+X" em uma linha, e os preços e variações em colunas distintas
+def exibir_cards_variacao_transposta(filtered_data, submercado_selecionado, tipo_energia):
     dia_atual = filtered_data['DIA'].iloc[0]  # Pegando a data atual da seleção
-    tabela_dados = []  # Lista que armazenará os dados da tabela
-
-    ano_base = 2024  # Exemplo com ano fixo (você pode ajustar conforme necessário)
-
-    # Iterar sobre os A+1, A+2, A+3, A+4 para formar a tabela
+    ano_base = int(mes_selecionado.split('/')[1])
+    
+    # Definindo o layout com 4 colunas para cada "A+X"
     for i in range(1, 5):
+        col1, col2, col3, col4 = st.columns(4)
+        ano_base = int(mes_selecionado.split('/')[1])
         col_name = f'{submercado_selecionado} {tipo_energia} A+{i}'
         if col_name in filtered_data.columns:
             valor_atual = filtered_data[col_name].values[0]
-
-            # Obter o valor de 1 semana atrás
+            
+            # Exibindo os valores em cada coluna
+            with col1:
+                st.metric(label=f"{ano_base + i} (A+{i})", value=formatar_valor_brl(valor_atual), delta="")
+            
+            # Card de 1 semana atrás
             value_1_week_ago = get_previous_week_data(dia_atual, submercado_selecionado, tipo_energia, 1, preco_coluna=f'A+{i}')
-            var_1_week = calcular_variacao_percentual(valor_atual, value_1_week_ago) if value_1_week_ago is not None else None
+            if value_1_week_ago is not None:
+                var_1_week = calcular_variacao_percentual(valor_atual, value_1_week_ago)
+                cor_1_week = 'normal' if var_1_week > 0 else 'normal'
+                with col2:
+                    st.metric(label=f"{ano_base + i} (1 semana atrás)", value=formatar_valor_brl(value_1_week_ago), delta=f"{var_1_week:.2f}%", delta_color=cor_1_week)
 
-            # Obter o valor de 4 semanas atrás
+            # Card de 4 semanas atrás
             value_4_weeks_ago = get_previous_week_data(dia_atual, submercado_selecionado, tipo_energia, 4, preco_coluna=f'A+{i}')
-            var_4_weeks = calcular_variacao_percentual(valor_atual, value_4_weeks_ago) if value_4_weeks_ago is not None else None
+            if value_4_weeks_ago is not None:
+                var_4_weeks = calcular_variacao_percentual(valor_atual, value_4_weeks_ago)
+                cor_4_weeks = 'normal' if var_4_weeks > 0 else 'normal'
+                with col3:
+                    st.metric(label=f"{ano_base + i} (1 mês atrás)", value=formatar_valor_brl(value_4_weeks_ago), delta=f"{var_4_weeks:.2f}%", delta_color=cor_4_weeks)
 
-            # Adicionar as informações à lista de dados para a tabela{format_decimal({valor_atual:.2f}, locale='pt_BR')}%
-            tabela_dados.append({
-                'A+': f"{ano_base + i} (A+{i})",
-                'Valor Atual (R$)': formatar_valor_brl(valor_atual),
-                '1 Semana Atrás (R$)': formatar_valor_brl(valor_atual) if value_1_week_ago is not None else "N/A",
-                'Variação 1 Semana (%)': formatar_variacao(var_1_week),
-                '4 Semanas Atrás (R$)': formatar_valor_brl(valor_atual) if value_4_weeks_ago is not None else "N/A",
-                'Variação 4 Semanas (%)': formatar_variacao(var_4_weeks)
-            })
+            # Card de 52 semanas atrás (1 ano atrás)
+            value_52_weeks_ago = get_previous_year_data(dia_atual, submercado_selecionado, tipo_energia, preco_coluna=f'A+{i}')
+            if value_52_weeks_ago is not None:
+                var_52_weeks = calcular_variacao_percentual(valor_atual, value_52_weeks_ago)
+                cor_52_weeks = 'normal' if var_52_weeks > 0 else 'normal'
+                with col4:
+                    st.metric(label=f"{ano_base + i} (1 ano atrás)", value=formatar_valor_brl(value_52_weeks_ago), delta=f"{var_52_weeks:.2f}%", delta_color=cor_52_weeks)
 
-    # Criar o DataFrame com os dados coletados
-    tabela_df = pd.DataFrame(tabela_dados)
-
-    # Exibir a tabela no Streamlit
-    st.write("Tabela de Preços e Variações")
-    st.dataframe(tabela_df)
-
-exibir_tabela_variacao(filtered_data, submercado_selecionado, tipo_energia)
-#AAAAAAAAAAAAA AQUI ACABA A TABELAAA
-#AAAAAAAAAAAAA AQUI ACABA A TABELAAA
-#AAAAAAAAAAAAA AQUI ACABA A TABELAAA
+# Exibição dos cards com variação transposta corretamente
+exibir_cards_variacao_transposta(filtered_data, submercado_selecionado, tipo_energia)
 
 
 
 st.write("")
+st.write("")
 st.write("---")
+st.write("")
 st.write("")
 # Agora vamos criar o gráfico de histórico
 st.subheader("Histórico de preços de energia para o ano selecionado")
 
 # O ano selecionado é o ano para o qual queremos ver as previsões
-ano_selecionado = st.selectbox("**Selecione o ano para ver a evolução das previsões**", 
-                                sorted(all_data['DIA'].dt.year.unique(), reverse=True))
+anos = sorted(all_data['DIA'].dt.year.unique(), reverse=True)
+ano_selecionado = anos[0]
 
 # Filtrando os dados do ano selecionado
 dados_ano_selecionado = filtered_data[filtered_data['DIA'].dt.year == ano_selecionado]
@@ -337,15 +318,12 @@ from babel import Locale
 def format_number(num):
     return format_decimal(num, locale='pt_BR', format="#,##0.0")
 
-# Função para criar os gráficos, incluindo previsões futuras
+from collections import defaultdict
+import numpy as np
+
 def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
     col1, col2 = st.columns(2)  # Criando duas colunas para os gráficos
-    
-    # Definindo o intervalo fixo de 7 anos para todos os gráficos
-    all_start_date = pd.Timestamp(f'{ano_selecionado - 3}-01-01')  # 3 anos antes do ano selecionado
-    all_end_date = pd.Timestamp(f'{ano_selecionado + 3}-12-31')    # 3 anos após o ano selecionado
-    tick_years = [ano_selecionado - 3 + i for i in range(7)]  # Anos entre 3 anos antes e 3 anos depois
-    
+
     # Definir o valor máximo para o eixo Y
     max_value = 0
 
@@ -359,9 +337,8 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
 
         # Exibindo o subtítulo antes de cada gráfico
         with col1 if i % 2 == 0 else col2:
-            # Inicializando listas para armazenar os dados combinados das previsões
-            combined_dates = []
-            combined_values = []
+            # Inicializando o dicionário para armazenar as datas e seus valores
+            date_values = defaultdict(list)
 
             # Criar as previsões para esse gráfico
             for j in range(4):  # Para cada A+1, A+2, A+3, A+4
@@ -384,8 +361,25 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                         prev_year_data = prev_year_data[['DIA', col_name]]
                         
                         # Adicionando os dados dessa previsão às listas de dados combinados
-                        combined_dates.extend(prev_year_data['DIA'])
-                        combined_values.extend(prev_year_data[col_name])
+                        for _, row in prev_year_data.iterrows():
+                            date_values[row['DIA']].append(row[col_name])
+
+            # Agora, para cada data, podemos calcular a média ou o valor máximo
+            combined_dates = []
+            combined_values = []
+
+            # Para cada data, escolhemos o valor máximo (ou média, dependendo do seu caso)
+            for date, values in date_values.items():
+                # Remover valores ausentes (NaT ou NaN)
+                values = [v for v in values if pd.notna(v)]  # Filtra valores NaN ou NaT
+                
+                if values:  # Se a lista não estiver vazia
+                    combined_dates.append(date)
+                    combined_values.append(max(values))  # Ou usar a média, dependendo do caso
+
+            # Ordenar as datas para garantir que o gráfico seja exibido cronologicamente
+            sorted_dates_values = sorted(zip(combined_dates, combined_values))
+            combined_dates, combined_values = zip(*sorted_dates_values)
 
             # Criando o gráfico com a linha combinada
             fig = go.Figure()
@@ -402,41 +396,109 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                 ),
                 customdata=[format_number(value) for value in combined_values]  # Formatação customizada para o valor
             ))
+            ultimo_ano_disponivel = all_data['DIA'].dt.year.max()  # Pegando o último ano disponível no dataset
+            
+            # Inicializando listas para armazenar os dados combinados das previsões
+            combined_dates = []
+            combined_values = []
+            combined_values2 = []
+            combined_values3 = []
+            combined_values4 = []
 
+            # Determinando o nome da coluna com base na previsão selecionada
+            col_name = f'{submercado_selecionado} {tipo_energia} A+1'
+            col_name2 = f'{submercado_selecionado} {tipo_energia} A+2'
+            col_name3 = f'{submercado_selecionado} {tipo_energia} A+3'
+            col_name4 = f'{submercado_selecionado} {tipo_energia} A+4'
+            
+            # Filtrando os dados do ano correspondente para a previsão selecionada
+            prev_year_data = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                                    (col_name in all_data.columns)]
+            # Filtrando os dados do ano correspondente para a previsão selecionada
+            prev_year_data2 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                                    (col_name2 in all_data.columns)]
+            # Filtrando os dados do ano correspondente para a previsão selecionada
+            prev_year_data3 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                                    (col_name3 in all_data.columns)]
+            # Filtrando os dados do ano correspondente para a previsão selecionada
+            prev_year_data4 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                                    (col_name4 in all_data.columns)]
+            
+            # Verificando se há dados para o ano e submercado
+            if not prev_year_data.empty:
+                prev_year_data = prev_year_data[['DIA', col_name]]
+                
+                # Adicionando os dados dessa previsão às listas de dados combinados
+                combined_dates.extend(prev_year_data['DIA'])
+                combined_values.extend(prev_year_data[col_name])
+            if not prev_year_data2.empty:
+                prev_year_data2 = prev_year_data2[['DIA', col_name2]]
+                
+                # Adicionando os dados dessa previsão às listas de dados combinados
+                combined_values2.extend(prev_year_data2[col_name2])
+            if not prev_year_data3.empty:
+                prev_year_data3 = prev_year_data3[['DIA', col_name3]]
+                
+                # Adicionando os dados dessa previsão às listas de dados combinados
+                combined_values3.extend(prev_year_data3[col_name3])
+            if not prev_year_data4.empty:
+                prev_year_data4 = prev_year_data4[['DIA', col_name4]]
+                
+                # Adicionando os dados dessa previsão às listas de dados combinados
+                combined_values4.extend(prev_year_data4[col_name4])
+            
+            # Caso não haja dados disponíveis para o filtro
+            if not combined_dates:
+                st.write("Nenhum dado encontrado para a previsão selecionada.")
+                return
+
+            # Inicializando variáveis para as datas do eixo X
+            all_start_date = combined_dates[0]
+            all_end_date = combined_dates[-1]
+            max_value = max(
+                max(combined_values), 
+                max(combined_values2), 
+                max(combined_values3), 
+                max(combined_values4)
+            ) + 10
             # Configurando o layout do gráfico, incluindo o eixo x e seu formato
             fig.update_layout(
-                title=f'Previsões para o ano {ano_previsto}',
+                title=f'Cal {ano_previsto}',
                 yaxis_title='Preço (R$/MWh)',
                 showlegend=False,
                 yaxis=dict(
                     autorange=False,   # Permite que o valor máximo do eixo Y seja ajustado automaticamente
                     range=[0, max_value + 10]   # Força o valor mínimo do eixo Y a começar em 0
                 ),
-                xaxis=dict(
-                    tickformat="%d/%m/%Y",
-                    range=[all_start_date, all_end_date]  # Definindo o intervalo fixo para o eixo X
-                )
+            xaxis=dict(
+                tickformat="%Y", 
+                range=[all_start_date, all_end_date]  # Definindo o intervalo fixo para o eixo X
+            )
             )
 
-            # Gerar os 7 anos como ticks no eixo X
-            tick_dates = pd.to_datetime([f'{year}-01-01' for year in tick_years])
-
-            # Atualizar o eixo X para usar essas datas formatadas
+            num_ticks = 5  # Quantidade de ticks desejados
+            tick_dates = pd.date_range(
+                start=all_start_date, 
+                end=all_end_date, 
+                freq=f'{int((all_end_date - all_start_date).days / num_ticks)}D'  # Frequência calculada automaticamente
+            )
             fig.update_xaxes(
                 tickmode='array',
                 tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=[str(year) for year in tick_years],  # Exibir os anos como texto
                 tickangle=0
             )
 
             # Exibindo o gráfico
             st.plotly_chart(fig, use_container_width=True, config=config)
 
+
 with st.spinner('Carregando gráfico...'):
     plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia)
 
 st.write('')
+st.write('')
 st.write('---')
+st.write('')
 st.write('')
 
 # Função para formatar os números conforme o padrão português (Brasil)
@@ -451,13 +513,28 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
     # Inicializando listas para armazenar os dados combinados das previsões
     combined_dates = []
     combined_values = []
-
+    combined_values2 = []
+    combined_values3 = []
+    combined_values4 = []
+    valor = []
     # Determinando o nome da coluna com base na previsão selecionada
-    col_name = f'{submercado_selecionado} {tipo_energia} {previsao_selecionada}'
+    col_name = f'{submercado_selecionado} {tipo_energia} A+1'
+    col_name2 = f'{submercado_selecionado} {tipo_energia} A+2'
+    col_name3 = f'{submercado_selecionado} {tipo_energia} A+3'
+    col_name4 = f'{submercado_selecionado} {tipo_energia} A+4'
     
     # Filtrando os dados do ano correspondente para a previsão selecionada
     prev_year_data = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
-                               (col_name in all_data.columns)]
+                            (col_name in all_data.columns)]
+    # Filtrando os dados do ano correspondente para a previsão selecionada
+    prev_year_data2 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                            (col_name2 in all_data.columns)]
+    # Filtrando os dados do ano correspondente para a previsão selecionada
+    prev_year_data3 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                            (col_name3 in all_data.columns)]
+    # Filtrando os dados do ano correspondente para a previsão selecionada
+    prev_year_data4 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                            (col_name4 in all_data.columns)]
     
     # Verificando se há dados para o ano e submercado
     if not prev_year_data.empty:
@@ -466,6 +543,21 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
         # Adicionando os dados dessa previsão às listas de dados combinados
         combined_dates.extend(prev_year_data['DIA'])
         combined_values.extend(prev_year_data[col_name])
+    if not prev_year_data2.empty:
+        prev_year_data2 = prev_year_data2[['DIA', col_name2]]
+        
+        # Adicionando os dados dessa previsão às listas de dados combinados
+        combined_values2.extend(prev_year_data2[col_name2])
+    if not prev_year_data3.empty:
+        prev_year_data3 = prev_year_data3[['DIA', col_name3]]
+        
+        # Adicionando os dados dessa previsão às listas de dados combinados
+        combined_values3.extend(prev_year_data3[col_name3])
+    if not prev_year_data4.empty:
+        prev_year_data4 = prev_year_data4[['DIA', col_name4]]
+        
+        # Adicionando os dados dessa previsão às listas de dados combinados
+        combined_values4.extend(prev_year_data4[col_name4])
     
     # Caso não haja dados disponíveis para o filtro
     if not combined_dates:
@@ -475,15 +567,27 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
     # Inicializando variáveis para as datas do eixo X
     all_start_date = combined_dates[0]
     all_end_date = combined_dates[-1]
-    max_value = max(combined_values) + 10  # Ajuste do limite máximo no eixo Y
-
+    max_value = max(
+        max(combined_values), 
+        max(combined_values2), 
+        max(combined_values3), 
+        max(combined_values4)
+    ) + 10
+    if previsao_selecionada == 'A+1':
+        valor = combined_values
+    elif previsao_selecionada == 'A+2':
+        valor = combined_values2
+    elif previsao_selecionada == 'A+3':
+        valor = combined_values3
+    elif previsao_selecionada == 'A+4':
+        valor = combined_values4
     # Criando o gráfico com a linha combinada
     fig = go.Figure()
 
     # Adicionando uma única linha para a previsão selecionada
     fig.add_trace(go.Scatter(
         x=combined_dates, 
-        y=combined_values, 
+        y=valor, 
         mode='lines', 
         name=f'{previsao_selecionada} para o Submercado {submercado_selecionado}',
         line=dict(color="#67aeaa"),  # Cor das linhas
@@ -491,7 +595,7 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
             '%{x|%d/%m/%Y}<br>' +  # Formatação da data
             'Preço: %{customdata}<extra></extra>'
         ),
-        customdata=[format_number(value) for value in combined_values]  # Formatação customizada para o valor
+        customdata=[format_number(value) for value in valor]  # Formatação customizada para o valor
     ))
 
     # Configurando o layout do gráfico
@@ -504,7 +608,7 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
                 range=[0, max_value]   # Força o valor mínimo do eixo Y a começar em 0
             ),
             xaxis=dict(
-                tickformat="%d/%m/%Y", 
+                tickformat="%Y", 
                 range=[all_start_date, all_end_date]  # Definindo o intervalo fixo para o eixo X
             )
     )
@@ -548,3 +652,18 @@ with columns_2[0]:
 with columns_2[1]:
     with st.spinner('Carregando gráfico...'):
         plot_previsao_historia(submercado_selecionado, tipo_energia, 'A+4')
+
+
+import io
+excel_file = io.BytesIO()
+with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+    convencional_data.to_excel(writer, index=False, sheet_name='Convencional')
+    incentivada_data.to_excel(writer, index=False, sheet_name='Incentivada')
+
+# Fazendo o download do arquivo Excel
+st.download_button(
+    label="DOWNLOAD",
+    data=excel_file.getvalue(),
+    file_name=f'Dados_CurvaForward.xlsx',  # Certifique-se de definir a variável data_atual
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
