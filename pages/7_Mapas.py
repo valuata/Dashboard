@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from PIL import Image
+from PIL import Image, ImageEnhance
 from itertools import zip_longest
 
 st.set_page_config(page_title="Mapas", layout="wide")
@@ -33,6 +33,22 @@ st.markdown("""
             font-weight: 200;
             letter-spacing: 1px;
             margin-bottom: 20px; 
+        }
+        .st-b1 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 10px;         /* Bordas arredondadas */
+        }
+        .st-b2 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 10px;         /* Bordas arredondadas */
+        }
+        .st-b3 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 10px;         /* Bordas arredondadas */
+        }
+        .st-b4 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 10px;         /* Bordas arredondadas */
         }
         .stDateInput input {
             width: 50%;
@@ -327,7 +343,6 @@ if intercalated_images:
         img_width, img_height = img.size
         max_width = 300
         max_height = 300
-        img.thumbnail((int((max_height / img_height) * img_width), max_height))
 
         with cols[i % num_columns]:
             st.image(img, caption='')
@@ -339,7 +354,9 @@ else:
 
 # Segunda parte: seção de comparação
 st.write("")
+st.write("")
 st.write("---")
+st.write("")
 st.write("")
 
 col3, col4, col5 = st.columns(3)
@@ -436,10 +453,7 @@ if st.button("Gerar Comparação", key="gerar_comparacao", help="Clique para ger
                 max_width = 300
                 max_height = 300
     
-                if img_width > img_height:
-                    img.thumbnail((max_width, int((max_width / img_width) * img_height)))
-                else:
-                    img.thumbnail((int((max_height / img_height) * img_width), max_height))
+
     
                 cols[idx % images_per_row].image(img, caption=formatted_name)
         else:
