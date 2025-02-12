@@ -32,6 +32,37 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        .stRadio>div>label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stRadio>div>label>div {
+            display: flex;
+            align-items: center;
+        }
+        p{
+            margin: 1px 0px 1rem;
+            padding: 0px;
+            font-size: 1rem;
+            font-weight: 400;
+        }
+        .st-b1 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b2 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b3 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
+        .st-b4 {
+            border: 0px solid #4CAF50;  /* Borda verde */
+            border-radius: 0px;         /* Bordas arredondadas */
+        }
         h1{
             text-transform: uppercase; 
             font-weight: 200;
@@ -48,7 +79,7 @@ st.markdown("""
         .stDateInput input:focus {
             width: 50%;
             outline: none;
-            border: 0px solid #67AEAA; /* Mantém a borda quando está em foco */
+            border: 1px solid #67AEAA; /* Mantém a borda quando está em foco */
         }
         .stDateInput div {
             border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
@@ -524,6 +555,8 @@ with st.spinner('Carregando gráfico...'):
 
     # Gráfico de Barra (com as datas filtradas aplicadas)
     if not agg_data.empty:
+        min_y = 0
+        max_y = 0
         fig_bar = go.Figure()
         colors_dict = {
             'SE/CO': '#323e47',
@@ -546,7 +579,7 @@ with st.spinner('Carregando gráfico...'):
                 for _, row in subsystem_data.iterrows():
                     # Soma de todas as barras para a data
                     soma_value = format_decimal(sum([agg_data[agg_data['id_subsistema'] == sub].loc[agg_data['ena_data'] == row['ena_data'], metric_column].values[0] for sub in selected_subsystems]), locale='pt_BR', format="##,###.")
-
+                    max_y = max(max_y, sum([agg_data[agg_data['id_subsistema'] == sub].loc[agg_data['ena_data'] == row['ena_data'], metric_column].values[0] for sub in selected_subsystems]))
                     # Adicionando os dados no customdata
                     custom_row = [row['ena_data'], soma_value]
                     if frequency == 'Diário':
@@ -686,6 +719,26 @@ with st.spinner('Carregando gráfico...'):
                 ticktext=formatted_ticks,  # Usar as datas formatadas
                 tickangle=0
             )
+            tick_interval = (max_y - min_y) / 5  # Dividir o intervalo em 5 partes
+
+            # Gerar uma lista de valores para os ticks do eixo Y
+            tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+
+            # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+            formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+
+            # Atualizar o layout do gráfico com os valores dinâmicos
+            fig_bar.update_layout(
+                yaxis=dict(
+                    tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                    tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                    tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                    ticktext=formatted_ticks,  # Textos dos ticks formatados
+                    ticks="inside",  # Exibir os ticks dentro do gráfico
+                    tickangle=0,     # Manter os ticks na horizontal
+                    nticks=6,        # Número de ticks desejados
+                ),
+            )
 
         # Exibir gráfico de barras
         st.plotly_chart(fig_bar, config=config)
@@ -695,7 +748,9 @@ with st.spinner('Carregando gráfico...'):
 
 # Gráfico de Área (preenchendo entre max e min)
 st.write("")
+st.write("")
 st.write("---")
+st.write("")
 st.write("")
 st.write("### Histórico dos submercados")
 monthly_data = pd.read_csv('Mlt_atualizado.csv')
@@ -781,7 +836,7 @@ agg_subsystem_data_hist = aggregate_data_ena(subsystem_data_hist, frequency_hist
 mean_ena_data_hist = calculate_avg_ena_bruta(subsystem_data_hist, frequency_hist)
 
 with st.spinner('Carregando gráfico...'):
-
+    max_y2 = 0
     # Criar o gráfico de área para histórico
     fig_area_hist = go.Figure()
 
@@ -988,9 +1043,8 @@ with st.spinner('Carregando gráfico...'):
         ),
         yaxis=dict(
                     autorange=False,   # Permite que o valor máximo do eixo Y seja ajustado automaticamente
-                    range=[0, max_value+30]   # Força o valor mínimo do eixo Y a começar em 0
+                    range=[-5, max_value+30]   # Força o valor mínimo do eixo Y a começar em 0
                 ),
-        yaxis_tickformat='.,0f',
                 hoverlabel=dict(
                 align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
             ),
@@ -1077,6 +1131,26 @@ with st.spinner('Carregando gráfico...'):
             tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
             ticktext=formatted_ticks,  # Usar as datas formatadas
             tickangle=0,
+        )
+        tick_interval = (max_value - min_y) / 5  # Dividir o intervalo em 5 partes
+
+        # Gerar uma lista de valores para os ticks do eixo Y
+        tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+
+        # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+
+        # Atualizar o layout do gráfico com os valores dinâmicos
+        fig_area_hist.update_layout(
+            yaxis=dict(
+                tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                ticktext=formatted_ticks,  # Textos dos ticks formatados
+                ticks="inside",  # Exibir os ticks dentro do gráfico
+                tickangle=0,     # Manter os ticks na horizontal
+                nticks=6,        # Número de ticks desejados
+            ),
         )
 
     # Exibir o gráfico
