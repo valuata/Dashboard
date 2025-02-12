@@ -4,6 +4,7 @@ import plotly.graph_objs as go
 from datetime import datetime
 from github import Github
 from babel import Locale
+import math
 from babel.numbers import format_decimal, format_currency
 from babel.dates import format_date
 
@@ -723,9 +724,10 @@ with st.spinner('Carregando gráfico...'):
 
             # Gerar uma lista de valores para os ticks do eixo Y
             tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+            tick_vals_rounded = [math.ceil(val / 5000) * 5000 for val in tick_vals]
 
             # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
-            formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+            formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
 
             # Atualizar o layout do gráfico com os valores dinâmicos
             fig_bar.update_layout(
@@ -1136,9 +1138,10 @@ with st.spinner('Carregando gráfico...'):
 
         # Gerar uma lista de valores para os ticks do eixo Y
         tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+        tick_vals_rounded = [math.ceil(val / 5000) * 5000 for val in tick_vals]
 
         # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
-        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals]
+        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
 
         # Atualizar o layout do gráfico com os valores dinâmicos
         fig_area_hist.update_layout(
