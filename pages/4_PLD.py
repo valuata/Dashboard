@@ -206,7 +206,7 @@ col3, col4, col1, col2 = st.columns([1, 1, 1, 1])
 with col1:
     period = st.radio("**Frequência**", ('Horário', 'Diário', 'Semanal', 'Mensal'), index=3)  # Default to 'Mensal'
 with col2:
-    selected_submarkets = st.multiselect("**Selecione os Submercados**", submarket_options, default=submarket_options, placeholder='Escolha uma opção')
+    selected_submarkets = st.multiselect("**Selecione os submercados**", submarket_options, default=submarket_options, placeholder='Escolha uma opção')
 with col3:
     # Atualiza o valor do date input para o valor do slider
     start_date_input = st.date_input("**Início**", min_value=min_date, max_value=max_date, value=start_date_slider, format="DD/MM/YYYY")
