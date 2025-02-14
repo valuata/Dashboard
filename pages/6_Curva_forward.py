@@ -589,7 +589,7 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
         x=combined_dates, 
         y=valor, 
         mode='lines', 
-        name=f'{previsao_selecionada} para o Submercado {submercado_selecionado}',
+        name=f'{previsao_selecionada} para o submercado {submercado_selecionado}',
         line=dict(color="#67aeaa"),  # Cor das linhas
         hovertemplate=(
             '%{x|%d/%m/%Y}<br>' +  # Formatação da data
@@ -600,7 +600,7 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
 
     # Configurando o layout do gráfico
     fig.update_layout(
-            title=f'Histórico de {previsao_selecionada} para o Submercado {submercado_selecionado} ({tipo_energia})',
+            title=f'Histórico de {previsao_selecionada} para o submercado {submercado_selecionado} ({tipo_energia})',
             yaxis_title='Preço (R$/MWh)',
             showlegend=False,
             yaxis=dict(
