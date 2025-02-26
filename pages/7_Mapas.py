@@ -370,7 +370,8 @@ st.write("")
 st.write("---")
 st.write("")
 st.write("")
-
+if 'selected_filters' not in st.session_state:
+    st.session_state.selected_filters = []
 # Coluna para o título
 st.header("Comparação")
 
