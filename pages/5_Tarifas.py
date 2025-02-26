@@ -710,9 +710,9 @@ with col10:
 
     # Gráfico 1: Variação da Bandeira em um Ano
     df_filtered_ano = df_region[df_region['Ano'] == year]
-    ultimo_ano = sorted(df_filtered_ano['Ano'].unique())[-1]
+    ultimo_ano = sorted(df_region['Ano'].unique())[-1]
     ultimo_mes = sorted(df_filtered_ano['Mes'].unique())[-1]
-    ultima_band = df_filtered_ano['Bandeira'].dropna().unique()[-1]
+    ultima_band = df_region[df_region['Ano'] == ultimo_ano]['Bandeira'].dropna().unique()[-1]
     st.markdown(
     """
     <div style="border: 1px solid #67aeaa; padding: 10px; border-radius: 0px; width: 200px; color:#67aeaa";>
