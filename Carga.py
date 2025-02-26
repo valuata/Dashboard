@@ -180,120 +180,69 @@ arquivo_data = 'data_atual.txt'
 data_arquivo = ler_data_arquivo()
 locale = Locale('pt', 'BR')
 
-if (data_atual > data_arquivo and data_atual.hour >= 2):
-    import os
-# Função de autenticação do GitHub
+if (data_atual.date() > data_arquivo.date() and data_atual.hour >= 2):
     def authenticate_github(token):
         g = Github(token)
         return g
 
-    # Função para atualizar o arquivo no GitHub
     def push_to_github(repo_name, file_name, commit_message, file_content, token):
+
         g = authenticate_github(token)
         repo = g.get_repo(repo_name)
 
-        try:
-            file = repo.get_contents(file_name)
-            current_sha = file.sha  # Obtém o sha do arquivo atual no repositório
-        except Exception as e:
-            print(f"Erro ao tentar obter o arquivo: {e}")
-            return
+        file = repo.get_contents(file_name)
 
-        # Se o arquivo foi modificado, atualize-o
-        try:
-            repo.update_file(file.path, commit_message, file_content, current_sha)
-            print("Arquivo atualizado com sucesso.")
-        except Exception as e:
-            print(f"Erro ao atualizar o arquivo: {e}")
+            # Update the file
+        repo.update_file(file.path, commit_message, file_content, file.sha)
 
-    # Função para ler a data do arquivo local
-    def ler_data_arquivo():
-        try:
-            with open('data_atual.txt', 'r') as file:
-                data = file.read()
-            return datetime.strptime(data, '%d/%m/%Y')
-        except FileNotFoundError:
-            return datetime(1900, 1, 1)  # Caso o arquivo não exista ainda
-
-    # Função para atualizar o arquivo com a data atual
     def atualizar_data_arquivo():
-        data_atual = datetime.today()
-        with open('data_atual.txt', 'w') as file:
-            file.write(data_atual.strftime('%d/%m/%Y'))
-        return data_atual
+        with open(arquivo_data, 'w') as file:
+            file.write(datetime.today().strftime('%d/%m/%Y'))
 
-    # Função para realizar o processo de atualização automaticamente
-    def processar_atualizacao_automatica():
-        data_atual = datetime.today()
-        data_arquivo = ler_data_arquivo()
+        with open(arquivo_data, 'r') as file:
+            file_content = file.read()
+        push_to_github(repo_name, "data_atual.txt", "Update Data", file_content, token)
 
-        if data_atual > data_arquivo and data_atual.hour >= 2:  # Atualizar após 2 AM
-            # Tokens de autenticação
-            with open("token1.txt", 'r') as file:
-                token1 = file.read()
+    with open("token1.txt", 'r') as file:
+            token1 = file.read()
 
-            with open("token2.txt", 'r') as file:
-                token2 = file.read()
+    with open("token2.txt", 'r') as file:
+            token2 = file.read()
 
-            token = token1 + token2
-            repo_name = "valuata/Dashboard"  # Nome do repositório GitHub
-            file_name = "Carga_Consumo_atualizado.csv"  # Nome do arquivo a ser atualizado
-            commit_message = "Update Carga_Consumo"  # Mensagem do commit
+    token = token1 + token2
+    repo_name = "valuata/Dashboard"  #GitHub repository name
+    file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
+    commit_message = "Update Carga_Consumo"  #  commit message
 
-            # Leitura e atualização de dados
-            failure = False
-            i = 2000
-            df_carga = pd.DataFrame()
-            
-            while not failure:
-                url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_energia_di/CARGA_ENERGIA_{i}.csv'
-                try:
-                    dados_carga = pd.read_csv(url, delimiter=';')
-                except Exception as e:
-                    failure = True
-                if i == 2000:
-                    df_carga = dados_carga
-                elif not failure:
-                    df_carga = pd.concat([df_carga, dados_carga])
-                i = i + 1
-            
-            df_carga.drop(columns='nom_subsistema', inplace=True)
-            df_carga = df_carga.reset_index(drop=True)
-            df_carga.replace({'SE': 'SE/CO'}, inplace=True)
-            carga_data = df_carga
+    failure = False
+    i = 2000
+    df_carga = pd.DataFrame()
+    
+    while failure == False:
+        url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_energia_di/CARGA_ENERGIA_{i}.csv'
+        try:
+            # Lendo o CSV diretamente da URL com delimitador ';'
+            dados_carga = pd.read_csv(url, delimiter=';')
+        except Exception as e:
+            # Caso haja erro ao carregar o arquivo, sai do loop
+            failure = True
+        if i == 2000:
+            df_carga = dados_carga
+        elif failure == False:
+            df_carga = pd.concat([df_carga, dados_carga])
+        i = i + 1
+    
+    df_carga.drop(columns= 'nom_subsistema', inplace=True)
+    df_carga = df_carga.reset_index(drop=True)
+    df_carga.replace({'SE': 'SE/CO'}, inplace=True)
+    carga_data = df_carga
+    
+    # Atualizar o arquivo .txt com a data atual
+    atualizar_data_arquivo()
+    
+    file_content = carga_data.to_csv(index=False)
+    push_to_github(repo_name, file_name, commit_message, file_content, token)
 
-            # Atualizar o arquivo local com a data atual
-            atualizar_data_arquivo()
-
-            # Converter dados para CSV
-            file_content = carga_data.to_csv(index=False)
-
-            # Verificar se o arquivo foi modificado no repositório e fazer o push
-            push_to_github(repo_name, file_name, commit_message, file_content, token)
-
-    # Verifica se o código já foi executado no dia atual para evitar repetição
-    def verificar_executado_hoje():
-        today = datetime.today().strftime('%d/%m/%Y')
-        
-        # Armazenar a data da última execução
-        if os.path.exists('ultima_execucao.txt'):
-            with open('ultima_execucao.txt', 'r') as file:
-                ultima_execucao = file.read().strip()
-        else:
-            ultima_execucao = ''
-
-        if today != ultima_execucao:
-            # Se não foi executado hoje, processa a atualização
-            processar_atualizacao_automatica()
-            # Atualiza a data da última execução
-            with open('ultima_execucao.txt', 'w') as file:
-                file.write(today)
-            st.success('Arquivo atualizado automaticamente!')
-        else:
-            st.info('Já foi realizada uma atualização hoje.')
-
-    # Chama a função para verificar e executar a atualização
-    verificar_executado_hoje()
 carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
 # Carregar os dados
 
