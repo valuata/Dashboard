@@ -403,7 +403,7 @@ data_options = get_data_options()
 with col_center:
     # Filtro de mapas
     # Garantir que o número de colunas seja pelo menos 1
-    num_columns = max(1, len(st.session_state.selected_filters))  # Garantir que haja pelo menos uma coluna
+    num_columns = max(2, len(st.session_state.selected_filters))  # Garantir que haja pelo menos uma coluna
     filter_columns = st.columns(num_columns)  # Uma coluna para cada filtro
     
     for i, filter_set in enumerate(st.session_state.selected_filters):
