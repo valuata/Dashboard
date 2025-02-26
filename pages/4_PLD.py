@@ -31,6 +31,20 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
+        .st-cu {
+            border-bottom-left-radius: 0;
+        }
+        .st-ct {
+            border-bottom-right-radius: 0;
+        }
+        .st-cs {
+            border-top-right-radius: 0;
+        }
+        .st-cr {
+            border-top-left-radius: 0;
+        }
+            
+
         h1{
             text-transform: uppercase; 
             font-weight: 200;
@@ -82,6 +96,7 @@ st.markdown("""
         .stRadio>div>label>div {
             display: flex;
             align-items: center;
+            
         }
         .stDownloadButton>button {
             background-color: #67AEAA; /* Cor de fundo */
@@ -106,8 +121,10 @@ st.markdown("""
         }
         hr {
             border: 0;
-            height: 2px;
             background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        hr:not([size]) {
+            height: 2px;
         }
         div[data-baseweb="select"] {
             width: 80%;
@@ -150,6 +167,20 @@ def format_daily_date(date):
 
 def format_hour_date(date):
     return date.strftime('%d/%m/%Y : %H:00h')
+
+def format_week_date_tick(date):
+    # Calcula o número da semana dentro do mês
+    week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
+    return f"S{week_number}/{format_date(date, format='yyyy', locale='pt_BR').upper()}"
+
+def format_month_date_tick(date):
+    return format_date(date, format='yyyy', locale='pt_BR').upper()
+
+def format_daily_date_tick(date):
+    return date.strftime('%Y')
+
+def format_hour_date_tick(date):
+    return date.strftime('%Y')
 # Load the data
 pld_data = pd.read_csv("PLD Horário Comercial Historico.csv")
 
@@ -202,7 +233,7 @@ colors = ['#323e47', '#68aeaa', '#6b8b89', '#a3d5ce']
 submarket_options = [sub for sub in submarket_order if sub in pld_data.index.get_level_values('Submercado').unique()]
 
 # Exibir inputs de data lado a lado usando st.columns()
-col3, col4, col1, col2 = st.columns([1, 1, 1, 1])
+col3, col4, col1, col2 = st.columns([1, 1, 1, 2])
 with col1:
     period = st.radio("**Frequência**", ('Horário', 'Diário', 'Semanal', 'Mensal'), index=3)  # Default to 'Mensal'
 with col2:
@@ -314,11 +345,11 @@ else:
                     name=submarket,
                     line=dict(color=color),  # Cor personalizada para cada submercado
                     hovertemplate=( 
-                        "Data: %{customdata[1]: %MM/%yyyy}<br>"  + # Formato da data
-                        ("<span style='color:" + '#323e47' + ";'>█</span> SE/CO: %{customdata[0][0]:.,1f}<br>" if 'SE/CO' in selected_submarkets else '') +
-                        ("<span style='color:" + '#68aeaa' + ";'>█</span> S: %{customdata[0][1]:.,1f}<br>" if 'S' in selected_submarkets else '') +
-                        ("<span style='color:" + '#6b8b89' + ";'>█</span> NE: %{customdata[0][2]:.,1f}<br>" if 'NE' in selected_submarkets else '') +
-                        ("<span style='color:" + '#a3d5ce' + ";'>█</span> N: %{customdata[0][3]:.,1f}<br>" if 'N' in selected_submarkets else '') +
+                        "<b>Data:</b> %{customdata[1]: %MM/%yyyy}<br>"  + # Formato da data
+                        ("<span style='color:" + '#323e47' + ";'>█</span> <b>SE/CO:</b> <span >%{customdata[0][0]:.,1f}</span><br>"if 'SE/CO' in selected_submarkets else '') +
+                        ("<span style='color:" + '#68aeaa' + ";'>█</span> <b>S:</b> <span >%{customdata[0][1]:.,1f}</span><br>" if 'S' in selected_submarkets else '') +
+                        ("<span style='color:" + '#6b8b89' + ";'>█</span> <b>NE:</b> %{customdata[0][2]:.,1f}<br>" if 'NE' in selected_submarkets else '') +
+                        ("<span style='color:" + '#a3d5ce' + ";'>█</span> <b>N:</b> %{customdata[0][3]:.,1f}<br>" if 'N' in selected_submarkets else '') +
                         "<extra></extra>"  # Remove o texto extra padrão (ex: 'trace' name)
                     ),
                     customdata=list(zip(values_with_nan, formatted_dates)),  # Passar os valores com 'NaN' em vez de valores ausentes
@@ -345,7 +376,7 @@ else:
             # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
     
-            formatted_ticks = [format_daily_date(date) for date in tick_dates]
+            formatted_ticks = [format_daily_date_tick(date) for date in tick_dates]
             # Atualizar o eixo X para usar essas datas formatadas
             avg_values_per_submarket_graph.update_xaxes(
                 tickmode='array',
@@ -372,7 +403,7 @@ else:
             # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
     
-            formatted_ticks = [format_week_date(date) for date in tick_dates]
+            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
             # Atualizar o eixo X para usar essas datas formatadas
             avg_values_per_submarket_graph.update_xaxes(
                 tickmode='array',
@@ -399,7 +430,7 @@ else:
             # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
     
-            formatted_ticks = [format_hour_date(date) for date in tick_dates]
+            formatted_ticks = [format_hour_date_tick(date) for date in tick_dates]
             # Atualizar o eixo X para usar essas datas formatadas
             avg_values_per_submarket_graph.update_xaxes(
                 tickmode='array',
@@ -426,7 +457,7 @@ else:
             # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
     
-            formatted_ticks = [format_month_date(date) for date in tick_dates]
+            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
             # Atualizar o eixo X para usar essas datas formatadas
             avg_values_per_submarket_graph.update_xaxes(
                 tickmode='array',
@@ -651,12 +682,12 @@ with st.spinner('Carregando gráfico...'):
             decreasing=dict(line=dict(color=decreasing_color), fillcolor=decreasing_color),  # Exibir a legenda
             text=formatted_data[['Data','Open', 'High', 'Low', 'Close', 'Mean']].apply(
                 lambda row: (
-                    f"Data: {formatted_dates[agg_data.index.get_loc(row.name)]}<br>"  # Usando a data formatada
-                    f"Abertura: R$ {row['Open']}<br>"
-                    f"Máximo: R$ {row['High']}<br>"
-                    f"Mínimo: R$ {row['Low']}<br>"
-                    f"Fechamento: R$ {row['Close']}<br>"
-                    f"Média: R$ {row['Mean']}"
+                    f"<b>Data:</b> {formatted_dates[agg_data.index.get_loc(row.name)]}<br>"  # Usando a data formatada
+                    f"<b>Abertura:</b> R$ {row['Open']}<br>"
+                    f"<b>Máximo: </b>R$ {row['High']}<br>"
+                    f"<b>Mínimo: </b>R$ {row['Low']}<br>"
+                    f"<b>Fechamento:</b> R$ {row['Close']}<br>"
+                    f"<b>Média: </b>R$ {row['Mean']}"
                 ), axis=1
             ),  # Passando os valores de cada linha para o hover
             hoverinfo='text'  # Usar o campo 'text' para exibir as informações
@@ -714,7 +745,7 @@ with st.spinner('Carregando gráfico...'):
                     # Formatar as datas para o formato desejado
             tick_dates = [first_date] + list(tick_dates) + [last_date]
 
-            formatted_ticks = [format_week_date(date) for date in tick_dates]
+            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
             # Atualizar o eixo X para usar essas datas formatadas
             fig.update_xaxes(
                 tickmode='array',
@@ -740,7 +771,7 @@ with st.spinner('Carregando gráfico...'):
             )
             tick_dates = [first_date] + list(tick_dates) + [last_date]
 
-            formatted_ticks = [format_month_date(date) for date in tick_dates]
+            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
             # Atualizar o eixo X para usar essas datas formatadas
             fig.update_xaxes(
                 tickmode='array',
@@ -768,6 +799,8 @@ with st.spinner('Carregando gráfico...'):
                     tickangle=0,     # Manter os ticks na horizontal
                     nticks=6,        # Número de ticks desejados
                 ),
+                xaxis=dict(
+                tickformat="%Y") 
             )
 
         # Exibir o gráfico candlestick
