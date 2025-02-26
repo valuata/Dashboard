@@ -211,7 +211,8 @@ arquivo_data = 'data_atual_ena.txt'
 data_arquivo = ler_data_arquivo()
 locale = Locale('pt', 'BR')
 
-if (data_atual > data_arquivo and data_atual.hour >= 2):
+if (data_atual.date() > data_arquivo.date() and data_atual.hour >= 2):
+    st.write(data_atual.date())
     st.write(data_atual.date())
     st.write(data_arquivo.date())
     st.write(data_atual.hour)
