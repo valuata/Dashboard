@@ -202,7 +202,7 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
         with open(arquivo_data, 'r') as file:
             file_content = file.read()
         push_to_github(repo_name, "data_atual.txt", "Update Data", file_content, token)
-
+    
     with open("token1.txt", 'r') as file:
             token1 = file.read()
 
@@ -213,36 +213,36 @@ if (data_atual > data_arquivo and data_atual.hour >= 2):
     repo_name = "valuata/Dashboard"  #GitHub repository name
     file_name = "Carga_Consumo_atualizado.csv"  #  desired file name
     commit_message = "Update Carga_Consumo"  #  commit message
-
-    failure = False
-    i = 2000
-    df_carga = pd.DataFrame()
-    
-    while failure == False:
-        url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_energia_di/CARGA_ENERGIA_{i}.csv'
-        try:
-            # Lendo o CSV diretamente da URL com delimitador ';'
-            dados_carga = pd.read_csv(url, delimiter=';')
-        except Exception as e:
-            # Caso haja erro ao carregar o arquivo, sai do loop
-            failure = True
-        if i == 2000:
-            df_carga = dados_carga
-        elif failure == False:
-            df_carga = pd.concat([df_carga, dados_carga])
-        i = i + 1
-    
-    df_carga.drop(columns= 'nom_subsistema', inplace=True)
-    df_carga = df_carga.reset_index(drop=True)
-    df_carga.replace({'SE': 'SE/CO'}, inplace=True)
-    carga_data = df_carga
-    
-    # Atualizar o arquivo .txt com a data atual
-    atualizar_data_arquivo()
-    
-    file_content = carga_data.to_csv(index=False)
-    push_to_github(repo_name, file_name, commit_message, file_content, token)
-
+    def upar():
+        failure = False
+        i = 2000
+        df_carga = pd.DataFrame()
+        
+        while failure == False:
+            url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/carga_energia_di/CARGA_ENERGIA_{i}.csv'
+            try:
+                # Lendo o CSV diretamente da URL com delimitador ';'
+                dados_carga = pd.read_csv(url, delimiter=';')
+            except Exception as e:
+                # Caso haja erro ao carregar o arquivo, sai do loop
+                failure = True
+            if i == 2000:
+                df_carga = dados_carga
+            elif failure == False:
+                df_carga = pd.concat([df_carga, dados_carga])
+            i = i + 1
+        
+        df_carga.drop(columns= 'nom_subsistema', inplace=True)
+        df_carga = df_carga.reset_index(drop=True)
+        df_carga.replace({'SE': 'SE/CO'}, inplace=True)
+        carga_data = df_carga
+        
+        # Atualizar o arquivo .txt com a data atual
+        atualizar_data_arquivo()
+        
+        file_content = carga_data.to_csv(index=False)
+        push_to_github(repo_name, file_name, commit_message, file_content, token)
+    upar()
 carga_data = pd.read_csv('Carga_Consumo_atualizado.csv')
 # Carregar os dados
 
