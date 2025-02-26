@@ -93,8 +93,22 @@ st.markdown("""
         }
         hr {
             border: 0;
-            height: 2px;
             background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        hr:not([size]) {
+            height: 2px;
+        }
+        .st-cu {
+            border-bottom-left-radius: 0;
+        }
+        .st-ct {
+            border-bottom-right-radius: 0;
+        }
+        .st-cs {
+            border-top-right-radius: 0;
+        }
+        .st-cr {
+            border-top-left-radius: 0;
         }
         div[data-baseweb="select"] {
             width: 80%;
@@ -131,6 +145,32 @@ locale = Locale('pt', 'BR')
 # Garantir que as datas estão no formato datetime
 tarifa['Início Vigência'] = pd.to_datetime(tarifa['Início Vigência'])
 tarifa['Fim Vigência'] = pd.to_datetime(tarifa['Fim Vigência'])
+
+def get_max_value():
+
+    postos = ['Ponta', 'Fora ponta']
+
+    # Inicializa as variáveis para armazenar os maiores valores
+    max_value2 = 0
+    max_value3 = 0
+
+    # Calcular o max_value2 a partir de tusd_encargo_previous
+    for posto in postos:
+        posto_data_previous = tusd_encargo_previous[tusd_encargo_previous['Posto'] == posto]
+        if not posto_data_previous.empty:
+            current_value = posto_data_previous['TUSD'].values[0]
+            max_value2 = max(max_value2, current_value)
+
+    # Calcular o max_value3 a partir de tusd_encargo
+    for posto in postos:
+        posto_data = tusd_encargo[tusd_encargo['Posto'] == posto]
+        if not posto_data.empty:
+            current_value = posto_data['TE'].values[0]
+            max_value3 = max(max_value3, current_value)
+
+    # Retornar o maior valor entre max_value2 e max_value3
+    return max(max_value2, max_value3)
+
 
 st.title("Tarifas")
 
@@ -217,7 +257,7 @@ else:
         for posto in postos:
             posto_data = tusd_demanda_previous[tusd_demanda_previous['Posto'] == posto]
             if posto_data.empty:
-                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': ''})
             else:
                 current_value = posto_data['TUSD'].values[0]
                 vigencia = posto_data['Início Vigência'].values[0]
@@ -229,7 +269,7 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#67aeaa'),
-                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.45,
@@ -242,7 +282,7 @@ else:
         for posto in postos:
             posto_data = tusd_demanda[tusd_demanda['Posto'] == posto]
             if posto_data.empty:
-                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': ''})
             else:
                 current_value = posto_data['TUSD'].values[0]
                 vigencia = posto_data['Início Vigência'].values[0]
@@ -254,7 +294,7 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#323e47'),
-                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.45,
@@ -310,7 +350,7 @@ else:
         for entry in legend_entries:
             fig_tusd_demanda.add_trace(go.Scatter(
                 x=[None], y=[None], mode='markers',
-                marker=dict(color=entry['color'], size=10),
+                marker=dict(color=entry['color'], size=10, symbol='square'),
                 name=entry['text'],
                 showlegend=True
             ))
@@ -329,7 +369,7 @@ else:
         for posto in postos:
             posto_data = tusd_encargo_previous[tusd_encargo_previous['Posto'] == posto]
             if posto_data.empty:
-                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': ' '})
             else:
                 current_value = posto_data['TUSD'].values[0]
                 vigencia = posto_data['Início Vigência'].values[0]
@@ -341,20 +381,20 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#67aeaa'),
-                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.30,
                 showlegend=False
             ))
         legend_entries.append({'color': '#67aeaa', 'text': vigencia})
-        max_value = max([bar_data['Valor'] for bar_data in bars_data])
+        max_value2 = get_max_value()
 
         bars_data = []
         for posto in postos:
             posto_data = tusd_encargo[tusd_encargo['Posto'] == posto]
             if posto_data.empty:
-                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': ' '})
             else:
                 current_value = posto_data['TUSD'].values[0]
                 vigencia = posto_data['Início Vigência'].values[0]
@@ -366,7 +406,7 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#323e47'),
-                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.30,
@@ -375,14 +415,14 @@ else:
         legend_entries.append({'color': '#323e47', 'text': vigencia})
 
         aux = max([bar_data['Valor'] for bar_data in bars_data])
-        if aux>max_value:
-            max_value = aux
-        max_value = max(max_value, 0)  # Ensure that max_value is non-negative
-        if max_value>100: 
-            max_value = max_value+40
-        if max_value>1000: 
-            tick_interval = (max_value) / 5  # Dividir o intervalo em 5 partes
-            max_value = max_value+100
+        if aux>max_value2:
+            max_value2 = aux
+        max_value2 = max(max_value2, 0)  # Ensure that max_value is non-negative
+        if max_value2>100: 
+            max_value2 = max_value2+40
+        if max_value2>1000: 
+            tick_interval = (max_value2) / 5  # Dividir o intervalo em 5 partes
+            max_value2 = max_value2+100
             import math
             # Gerar uma lista de valores para os ticks do eixo Y
             tick_vals = [0 + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
@@ -409,7 +449,7 @@ else:
             xaxis_title=" ",
             yaxis_title="Valor (R$/MWh)",
             barmode='group',
-            yaxis=dict(range=[0, max_value + 10]),  # 10 units more than the max value
+            yaxis=dict(range=[0, max_value2 + 10]),  # 10 units more than the max value
             legend=dict(
                 orientation="h",
                 yanchor="bottom", 
@@ -424,7 +464,7 @@ else:
         for entry in legend_entries:
             fig_tusd_encargo.add_trace(go.Scatter(
                 x=[None], y=[None], mode='markers',
-                marker=dict(color=entry['color'], size=10),
+                marker=dict(color=entry['color'], size=10, symbol='square'),
                 name=entry['text'],
                 showlegend=True
             ))
@@ -442,7 +482,7 @@ else:
         for posto in postos:
             posto_data = tusd_encargo_previous[tusd_encargo_previous['Posto'] == posto]
             if posto_data.empty:
-                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': ' '})
             else:
                 current_value = posto_data['TE'].values[0]
                 vigencia = posto_data['Início Vigência'].values[0]
@@ -454,13 +494,13 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#67aeaa'),
-                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.30,
                 showlegend=False
             ))
-        max_value = max([bar_data['Valor'] for bar_data in bars_data])
+        max_value3 = get_max_value()
 
         legend_entries.append({'color': '#67aeaa', 'text': vigencia})
 
@@ -468,7 +508,7 @@ else:
         for posto in postos:
             posto_data = tusd_encargo[tusd_encargo['Posto'] == posto]
             if posto_data.empty:
-                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': '0,0'})
+                bars_data.append({'Posto': posto, 'Valor': 0, 'FormattedValor': ' '})
             else:
                 current_value = posto_data['TE'].values[0]
                 vigencia = posto_data['Início Vigência'].values[0]
@@ -480,7 +520,7 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#323e47'),
-                hovertemplate='%{x}: ' + bar_data['FormattedValor'] + '<extra></extra>',
+                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.30,
@@ -489,14 +529,14 @@ else:
         legend_entries.append({'color': '#323e47', 'text': vigencia})
 
         aux = max([bar_data['Valor'] for bar_data in bars_data])
-        if aux>max_value:
-            max_value = aux
-        max_value = max(max_value, 0)
-        if max_value>100: 
-            max_value = max_value+40
-        if max_value>1000: 
-            tick_interval = (max_value) / 5  # Dividir o intervalo em 5 partes
-            max_value = max_value+100
+        if aux>max_value3:
+            max_value3 = aux
+        max_value3 = max(max_value3, 0)
+        if max_value3>100: 
+            max_value3 = max_value3+40
+        if max_value3>1000: 
+            tick_interval = (max_value3) / 5  # Dividir o intervalo em 5 partes
+            max_value3 = max_value3+100
             import math
             # Gerar uma lista de valores para os ticks do eixo Y
             tick_vals = [0 + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
@@ -524,7 +564,7 @@ else:
             xaxis_title=" ",
             yaxis_title="Valor (R$/MWh)",
             barmode='group',
-            yaxis=dict(range=[0, max_value + 10]),  # 10 units more than the max value
+            yaxis=dict(range=[0, max_value3 + 10]),  # 10 units more than the max value
             legend=dict(
                 orientation="h",
                 yanchor="bottom", 
@@ -539,7 +579,7 @@ else:
         for entry in legend_entries:
             fig_tusd_tarifa.add_trace(go.Scatter(
                 x=[None], y=[None], mode='markers',
-                marker=dict(color=entry['color'], size=10),
+                marker=dict(color=entry['color'], size=10, symbol='square'),
                 name=entry['text'],
                 showlegend=True
             ))
@@ -611,7 +651,7 @@ st.write("")
 st.write("### Variação das Bandeiras Tarifárias")
 
 # Definir a ordem das bandeiras
-bandeira_order = ["Escassez", "Vermelha", "Vermelha 1", "Vermelha 2", "Amarela", "Verde"]
+bandeira_order = ["Verde", "Amarela", "Vermelha", "Vermelha 1", "Vermelha 2", "Escassez"]
 
 # Função para carregar e verificar os dados
 def load_and_check_data(file_path):
@@ -642,7 +682,7 @@ df_S = prepare_bandeiras(S)
 df_SECO = prepare_bandeiras(SECO)
 
 # Layout para filtro de seleção
-col7, col8, col9 = st.columns(3)
+col7, col8, col9, col10 = st.columns(4)
 
 # Filtro para escolher a região
 with col7:
@@ -650,29 +690,39 @@ with col7:
 
 # Filtro para escolher o ano
 with col8:
-    year = st.selectbox("**Ano**", list(range(2014, 2025)), placeholder='Escolha uma opção')
+    year = st.selectbox("**Ano**", sorted(df_N['Ano'].unique()), placeholder='Escolha uma opção')
 
 with col9:
     month = st.selectbox("**Mês**", ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'], placeholder='Escolha uma opção')
 
-
-
-
-# Mapeamento das regiões para os respectivos dataframes
-region_dfs = {
+with col10:
+    region_dfs = {
     "N": df_N,
     "NE": df_NE,
     "S": df_S,
     "SE/CO": df_SECO
-}
+    }
 
-# Obter os dados da região selecionada
-df_region = region_dfs.get(region)
+    # Obter os dados da região selecionada
+    df_region = region_dfs.get(region)
 
-# Filtro para escolher o mês (usado no gráfico 2)
+    # Filtro para escolher o mês (usado no gráfico 2)
 
-# Gráfico 1: Variação da Bandeira em um Ano
-df_filtered_ano = df_region[df_region['Ano'] == year]
+    # Gráfico 1: Variação da Bandeira em um Ano
+    df_filtered_ano = df_region[df_region['Ano'] == year]
+    ultimo_ano = sorted(df_filtered_ano['Ano'].unique())[-1]
+    ultimo_mes = sorted(df_filtered_ano['Mes'].unique())[-1]
+    ultima_band = df_filtered_ano['Bandeira'].dropna().unique()[-1]
+    st.markdown(
+    """
+    <div style="border: 1px solid #67aeaa; padding: 10px; border-radius: 0px; width: 200px; color:#67aeaa";>
+        <h3>"""f'{ultima_band}'"""</h3>
+        <p>"""f'{ultimo_ano}'""", """f'{ultimo_mes}'"""</p>
+    </div>
+    """, unsafe_allow_html=True
+)
+
+
 with st.spinner('Carregando gráfico...'):
     if not df_filtered_ano.empty:
         # Filtrando valores 0 ou NaN
