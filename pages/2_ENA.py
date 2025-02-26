@@ -108,8 +108,22 @@ st.markdown("""
         }
         hr {
             border: 0;
-            height: 2px;
             background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        hr:not([size]) {
+            height: 2px;
+        }
+        .st-cu {
+            border-bottom-left-radius: 0;
+        }
+        .st-ct {
+            border-bottom-right-radius: 0;
+        }
+        .st-cs {
+            border-top-right-radius: 0;
+        }
+        .st-cr {
+            border-top-left-radius: 0;
         }
         div[data-baseweb="select"] {
             width: 80%;
@@ -196,6 +210,16 @@ def format_month_date(date):
 
 def format_daily_date(date):
     return date.strftime('%d/%m/%Y')
+def format_week_date_tick(date):
+    # Calcula o número da semana dentro do mês
+    week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
+    return f"S{week_number}/{format_date(date, format='yyyy', locale='pt_BR').upper()}"
+
+def format_month_date_tick(date):
+    return format_date(date, format='yyyy', locale='pt_BR').upper()
+
+def format_daily_date_tick(date):
+    return date.strftime('%Y')
 
 
 def ler_data_arquivo():
@@ -244,232 +268,231 @@ if (data_atual.date() > data_arquivo.date() and data_atual.hour >= 2):
     repo_name = "valuata/Dashboard"  #GitHub repository name
     file_name = "Ena_atualizado.csv"  #  desired file name
     commit_message = "Update Ena"  #  commit message
-    def upar():
-        #TEM QUE SER *ESSE* ARQUIVO
-        historico = pd.read_csv("Enas_Subsistemas_1931-2022.csv")
 
-        # Função para calcular médias, mínimos e máximos, e atualizar porcentagens
-        def calcular_estatisticas_e_atualizar_porcentagens(df, novo_ano, novos_valores):
+    #TEM QUE SER *ESSE* ARQUIVO
+    historico = pd.read_csv("Enas_Subsistemas_1931-2022.csv")
 
-            if novo_ano in df['Ano'].values:
-                print(f"O ano {novo_ano} já existe no DataFrame. Nenhuma ação será realizada.")
-                return df
-            df = df.drop(columns=['Subsistema', '(min)MWmed',	'(min)% med.',	'(max)MWmed', '(max)% med.','(jan)% med.', '(fev)% med.', '(mar)% med.', '(abr)% med.', '(mai)% med.','(jun)% med.', '(jul)% med.', '(ago)% med.', '(set)% med.', '(out)% med.', '(nov)% med.', '(dez)% med.',])
-            try : df =  df.drop(columns= ['(jandez)MWmed','(jandez)% med.'])
-            except : df =  df.drop(columns= ['(jnd)MWmed','(jnd)% med.'])
-            df = df[:-1]
-            nova_linha = {'Ano': novo_ano}
-            for mes, valor in zip(['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'], novos_valores):
-                nova_linha[mes] = valor
-                
-            df = pd.concat([df, pd.DataFrame([nova_linha])], ignore_index=True)
-                # Drop the last row (old mean) if it exists
-            df.iloc[:, 1:13] = df.iloc[:, 1:13].apply(pd.to_numeric, errors='coerce')  # Converts non-numeric values to NaN
-            df['(min)MWmed'] = df.iloc[:, 1:13].min(axis=1)
-            df['(jnd)MWmed'] = df.iloc[:, 1:13].mean(axis=1)
-            df['(max)MWmed'] = df.iloc[:, 1:13].max(axis=1)
-            meses = ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed']
-            mjdm = ['(min)MWmed', '(jnd)MWmed', '(max)MWmed']
-            ano_atual = "media"  # Próximo ano
+    # Função para calcular médias, mínimos e máximos, e atualizar porcentagens
+    def calcular_estatisticas_e_atualizar_porcentagens(df, novo_ano, novos_valores):
 
-            # Calcular médias mensais
-            media_row = {'Ano': ano_atual}
-            for mes in meses:
-                media_row[mes] = df[mes].mean()  # Média dos valores para cada mês
-                
-            means = [df[mes].mean() for mes in meses]
-
-            for idx in range(len(df)):
-                for i in range(len(meses)):
-                    value_col = df.iloc[idx][meses[i]]  # Valor atual
-                    if pd.notna(value_col) and means[i] != 0:  # Previne divisão por zero
-                        df.loc[idx, f'{meses[i][0:5]}% med.'] = (value_col / means[i]) * 100
-                    else:
-                        df.loc[idx, f'{meses[i][0:5]}% med.'] = 100  # Define como None se valor for NaN ou média for 0
-
-            means2 = df['(jnd)MWmed'].mean()
-
-            for idx in range(len(df)):
-                for i in range(len(mjdm)):
-                    value_col = df.iloc[idx][mjdm[i]]  # Valor atual
-                    if pd.notna(value_col) and means2 != 0:  # Previne divisão por zero
-                        df.loc[idx, f'{mjdm[i][0:5]}% med.'] = (value_col / means2) * 100
-                    else:
-                        df.loc[idx, f'{mjdm[i][0:5]}% med.'] = 100 
-            
-            # Adiciona a nova linha com as estatísticas
-            df = pd.concat([df, pd.DataFrame([media_row])], ignore_index=True)
-            df = df.fillna(100)    
-
+        if novo_ano in df['Ano'].values:
+            print(f"O ano {novo_ano} já existe no DataFrame. Nenhuma ação será realizada.")
             return df
+        df = df.drop(columns=['Subsistema', '(min)MWmed',	'(min)% med.',	'(max)MWmed', '(max)% med.','(jan)% med.', '(fev)% med.', '(mar)% med.', '(abr)% med.', '(mai)% med.','(jun)% med.', '(jul)% med.', '(ago)% med.', '(set)% med.', '(out)% med.', '(nov)% med.', '(dez)% med.',])
+        try : df =  df.drop(columns= ['(jandez)MWmed','(jandez)% med.'])
+        except : df =  df.drop(columns= ['(jnd)MWmed','(jnd)% med.'])
+        df = df[:-1]
+        nova_linha = {'Ano': novo_ano}
+        for mes, valor in zip(['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'], novos_valores):
+            nova_linha[mes] = valor
+            
+        df = pd.concat([df, pd.DataFrame([nova_linha])], ignore_index=True)
+            # Drop the last row (old mean) if it exists
+        df.iloc[:, 1:13] = df.iloc[:, 1:13].apply(pd.to_numeric, errors='coerce')  # Converts non-numeric values to NaN
+        df['(min)MWmed'] = df.iloc[:, 1:13].min(axis=1)
+        df['(jnd)MWmed'] = df.iloc[:, 1:13].mean(axis=1)
+        df['(max)MWmed'] = df.iloc[:, 1:13].max(axis=1)
+        meses = ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed']
+        mjdm = ['(min)MWmed', '(jnd)MWmed', '(max)MWmed']
+        ano_atual = "media"  # Próximo ano
 
-        def inicio_SE(historicoSE):
+        # Calcular médias mensais
+        media_row = {'Ano': ano_atual}
+        for mes in meses:
+            media_row[mes] = df[mes].mean()  # Média dos valores para cada mês
+            
+        means = [df[mes].mean() for mes in meses]
 
-            # Escreva os valores para a região SE na ordem dos meses (jan, fev, mar, ..., dez)
-            values_input = [71658, 78130, 52904,  41024, 26938, 24249, 16822, 16036, 16085, 24508, 24449, 43079]
+        for idx in range(len(df)):
+            for i in range(len(meses)):
+                value_col = df.iloc[idx][meses[i]]  # Valor atual
+                if pd.notna(value_col) and means[i] != 0:  # Previne divisão por zero
+                    df.loc[idx, f'{meses[i][0:5]}% med.'] = (value_col / means[i]) * 100
+                else:
+                    df.loc[idx, f'{meses[i][0:5]}% med.'] = 100  # Define como None se valor for NaN ou média for 0
 
-            historicoSE = historicoSE[historicoSE['Ano'] != 2022]
+        means2 = df['(jnd)MWmed'].mean()
 
-            # Calcula estatísticas e atualiza porcentagens
-            historicoSE = calcular_estatisticas_e_atualizar_porcentagens(historicoSE, 2022, values_input)
-            historicoSE['Subsistema'] = "SE"
-            return historicoSE
+        for idx in range(len(df)):
+            for i in range(len(mjdm)):
+                value_col = df.iloc[idx][mjdm[i]]  # Valor atual
+                if pd.notna(value_col) and means2 != 0:  # Previne divisão por zero
+                    df.loc[idx, f'{mjdm[i][0:5]}% med.'] = (value_col / means2) * 100
+                else:
+                    df.loc[idx, f'{mjdm[i][0:5]}% med.'] = 100 
+        
+        # Adiciona a nova linha com as estatísticas
+        df = pd.concat([df, pd.DataFrame([media_row])], ignore_index=True)
+        df = df.fillna(100)    
 
-        def inicio_N(historicoN):
+        return df
 
-            # Escreva os valores para a região N na ordem dos meses (jan, fev, mar, ..., dez)
-            values_input = [35162, 30798, 32737,  29655, 17111, 8829, 4573, 2739, 1763, 1718, 3841, 10253]
-
-            historicoN = historicoN[historicoN['Ano'] != 2022]
-
-
-            # Calcula estatísticas e atualiza porcentagens
-            historicoN = calcular_estatisticas_e_atualizar_porcentagens(historicoN, 2022, values_input)
-            historicoN['Subsistema'] = "N"
-            return historicoN
-
-        def inicio_S(historicoS):
-
-            # Escreva os valores para a região S na ordem dos meses (jan, fev, mar, ..., dez)
-            values_input = [2802, 2751, 6990,  10176, 18906, 24482, 7823, 12663, 9727, 20738, 7820, 8163]
-
-            historicoS = historicoS[historicoS['Ano'] != 2022]
-
-            # Calcula estatísticas e atualiza porcentagens
-            historicoS = calcular_estatisticas_e_atualizar_porcentagens(historicoS, 2022, values_input)
-            historicoS['Subsistema'] = "S"
-            return historicoS
-
-        def inicio_NE(historicoNE):
-
-            # Escreva os valores para a região NE na ordem dos meses (jan, fev, mar, ..., dez)
-            values_input = [17924, 20879, 17281,  7449, 3678, 2857, 2445, 2056, 2234, 1912, 4270, 9539]
-
-            historicoNE = historicoNE[historicoNE['Ano'] != 2022]
-
-            # Calcula estatísticas e atualiza porcentagens
-            historicoNE = calcular_estatisticas_e_atualizar_porcentagens(historicoNE, 2022, values_input)
-            historicoNE['Subsistema'] = "NE"
-            return historicoNE
-
-        # Categorização e inicialização do histórico do subsistema SE
-        historicoSE = historico[historico['Subsistema'] == 'SECO']
-        historicoSE = inicio_SE(historicoSE)
+    def inicio_SE(historicoSE):
 
         # Escreva os valores para a região SE na ordem dos meses (jan, fev, mar, ..., dez)
-        values_inputSE = [71658, 78130, 52904,  41024, 26938, 24249, 16822, 16036, 16085, 24508, 24449, 43079]
+        values_input = [71658, 78130, 52904,  41024, 26938, 24249, 16822, 16036, 16085, 24508, 24449, 43079]
 
-        # Escreva o ano que você deseja adicionar
-        anoSE = 2022
+        historicoSE = historicoSE[historicoSE['Ano'] != 2022]
 
         # Calcula estatísticas e atualiza porcentagens
-        historicoSE = calcular_estatisticas_e_atualizar_porcentagens(historicoSE, anoSE, values_inputSE)
+        historicoSE = calcular_estatisticas_e_atualizar_porcentagens(historicoSE, 2022, values_input)
         historicoSE['Subsistema'] = "SE"
+        return historicoSE
 
-        # Categorização do histórico do subsistema N
-        historicoN = historico[historico['Subsistema'] == 'N']
-        historicoN = inicio_N(historicoN)
+    def inicio_N(historicoN):
 
         # Escreva os valores para a região N na ordem dos meses (jan, fev, mar, ..., dez)
         values_input = [35162, 30798, 32737,  29655, 17111, 8829, 4573, 2739, 1763, 1718, 3841, 10253]
 
-        # Escreva o ano que você deseja adicionar
-        ano = 2022
+        historicoN = historicoN[historicoN['Ano'] != 2022]
+
 
         # Calcula estatísticas e atualiza porcentagens
-        historicoN = calcular_estatisticas_e_atualizar_porcentagens(historicoN, ano, values_input)
+        historicoN = calcular_estatisticas_e_atualizar_porcentagens(historicoN, 2022, values_input)
         historicoN['Subsistema'] = "N"
+        return historicoN
 
-
-        # Categorização do histórico do subsistema S
-        historicoS = historico[historico['Subsistema'] == 'S']
-        historicoS = inicio_S(historicoS)
+    def inicio_S(historicoS):
 
         # Escreva os valores para a região S na ordem dos meses (jan, fev, mar, ..., dez)
-        values_inputS = [2802, 2751, 6990,  10176, 18906, 24482, 7823, 12663, 9727, 20738, 7820, 8163]
+        values_input = [2802, 2751, 6990,  10176, 18906, 24482, 7823, 12663, 9727, 20738, 7820, 8163]
 
-        # Escreva o ano que você deseja adicionar
-        anoS = 2022
+        historicoS = historicoS[historicoS['Ano'] != 2022]
+
         # Calcula estatísticas e atualiza porcentagens
-
-        historicoS = calcular_estatisticas_e_atualizar_porcentagens(historicoS, anoS, values_inputS)
+        historicoS = calcular_estatisticas_e_atualizar_porcentagens(historicoS, 2022, values_input)
         historicoS['Subsistema'] = "S"
+        return historicoS
 
-        # Categorização do histórico do subsistema NE
-        historicoNE = historico[historico['Subsistema'] == 'NE']
-        historicoNE = inicio_NE(historicoNE)
+    def inicio_NE(historicoNE):
 
         # Escreva os valores para a região NE na ordem dos meses (jan, fev, mar, ..., dez)
-        values_inputNE = [17924, 20879, 17281,  7449, 3678, 2857, 2445, 2056, 2234, 1912, 4270, 9539]
+        values_input = [17924, 20879, 17281,  7449, 3678, 2857, 2445, 2056, 2234, 1912, 4270, 9539]
 
-        # Escreva o ano que você deseja adicionar
-        anoNE = 2022
+        historicoNE = historicoNE[historicoNE['Ano'] != 2022]
 
         # Calcula estatísticas e atualiza porcentagens
-        historicoNE = calcular_estatisticas_e_atualizar_porcentagens(historicoNE, anoNE, values_inputNE)
+        historicoNE = calcular_estatisticas_e_atualizar_porcentagens(historicoNE, 2022, values_input)
         historicoNE['Subsistema'] = "NE"
+        return historicoNE
 
-        df_mlt = pd.concat([historicoSE, historicoS, historicoN, historicoNE]).reset_index(drop=True)
+    # Categorização e inicialização do histórico do subsistema SE
+    historicoSE = historico[historico['Subsistema'] == 'SECO']
+    historicoSE = inicio_SE(historicoSE)
 
-        failure = False; i = 2000
-        df_earm = pd.DataFrame
-        while failure == False:
-            url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/ena_subsistema_di/ENA_DIARIO_SUBSISTEMA_{i}.csv'
-            try:
-                # Lendo o CSV diretamente da URL com delimitador ';'
-                dados_ena = pd.read_csv(url, delimiter=';')
-            except Exception as e:
-                # print(f"Erro ao carregar o arquivo CSV: {e}")
-                failure = True
-            if i == 2000:
-                df_ena = dados_ena
-            elif failure == False: 
-                df_ena = pd.concat([df_ena, dados_ena])
-            i = i + 1
-        df_ena.replace({'NORDESTE': 'NE', 'NORTE': 'N','SUL': 'S','SUDESTE': 'SE'}, inplace=True)
-        df_ena = df_ena.drop(columns=["ena_bruta_regiao_percentualmlt", "ena_armazenavel_regiao_percentualmlt"])
-        df_ena['ena_data'] = pd.to_datetime(df_ena['ena_data'])
-        df_ena['month'] = df_ena['ena_data'].dt.month
-        def month_value_condition(row, df, ena):
-            month = row['month']
-            sub = row['nom_subsistema']
-            ena_value = row[ena]
-            
-            subsistema_columns = {
-                'SE': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', 
-                    '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
-                'N': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
-                    '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
-                'NE': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
-                    '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
-                'S': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
-                    '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed']
-            }
-            
-            if sub in subsistema_columns:
-                month_column = subsistema_columns[sub][month - 1]  
-                value = ena_value * 100 / df.loc[(df['Subsistema'] == sub) & (df['Ano'] == 'media'), month_column].values[0]
-                return value
-            else:
-                return "Invalid subsistema"
+    # Escreva os valores para a região SE na ordem dos meses (jan, fev, mar, ..., dez)
+    values_inputSE = [71658, 78130, 52904,  41024, 26938, 24249, 16822, 16036, 16085, 24508, 24449, 43079]
 
-        df_ena['ena_bruta_regiao_percentualmlt'] = df_ena.apply(lambda row: month_value_condition(row, df_mlt, 'ena_bruta_regiao_mwmed'), axis=1)
-        df_ena['ena_armazenavel_regiao_percentualmlt'] = df_ena.apply(lambda row: month_value_condition(row, df_mlt, 'ena_armazenavel_regiao_mwmed'), axis=1)
-        df_ena = df_ena.drop(columns=['nom_subsistema']).reset_index(drop=True)
-        df_ena.replace({'SE': 'SE/CO'}, inplace=True)
-        df_mlt.replace({'SE': 'SE/CO'}, inplace=True)
+    # Escreva o ano que você deseja adicionar
+    anoSE = 2022
 
-        aux = df_ena.groupby(['id_subsistema', 'month'])['ena_bruta_regiao_mwmed'].agg(['max', 'min']).reset_index()
-        df_ena = pd.merge(df_ena, aux, on=['id_subsistema', 'month'], how='left')
-        ena_data = df_ena
+    # Calcula estatísticas e atualiza porcentagens
+    historicoSE = calcular_estatisticas_e_atualizar_porcentagens(historicoSE, anoSE, values_inputSE)
+    historicoSE['Subsistema'] = "SE"
 
-            
-        # Atualizar o arquivo .txt com a data atual
-        atualizar_data_arquivo()
+    # Categorização do histórico do subsistema N
+    historicoN = historico[historico['Subsistema'] == 'N']
+    historicoN = inicio_N(historicoN)
+
+    # Escreva os valores para a região N na ordem dos meses (jan, fev, mar, ..., dez)
+    values_input = [35162, 30798, 32737,  29655, 17111, 8829, 4573, 2739, 1763, 1718, 3841, 10253]
+
+    # Escreva o ano que você deseja adicionar
+    ano = 2022
+
+    # Calcula estatísticas e atualiza porcentagens
+    historicoN = calcular_estatisticas_e_atualizar_porcentagens(historicoN, ano, values_input)
+    historicoN['Subsistema'] = "N"
+
+
+    # Categorização do histórico do subsistema S
+    historicoS = historico[historico['Subsistema'] == 'S']
+    historicoS = inicio_S(historicoS)
+
+    # Escreva os valores para a região S na ordem dos meses (jan, fev, mar, ..., dez)
+    values_inputS = [2802, 2751, 6990,  10176, 18906, 24482, 7823, 12663, 9727, 20738, 7820, 8163]
+
+    # Escreva o ano que você deseja adicionar
+    anoS = 2022
+    # Calcula estatísticas e atualiza porcentagens
+
+    historicoS = calcular_estatisticas_e_atualizar_porcentagens(historicoS, anoS, values_inputS)
+    historicoS['Subsistema'] = "S"
+
+    # Categorização do histórico do subsistema NE
+    historicoNE = historico[historico['Subsistema'] == 'NE']
+    historicoNE = inicio_NE(historicoNE)
+
+    # Escreva os valores para a região NE na ordem dos meses (jan, fev, mar, ..., dez)
+    values_inputNE = [17924, 20879, 17281,  7449, 3678, 2857, 2445, 2056, 2234, 1912, 4270, 9539]
+
+    # Escreva o ano que você deseja adicionar
+    anoNE = 2022
+
+    # Calcula estatísticas e atualiza porcentagens
+    historicoNE = calcular_estatisticas_e_atualizar_porcentagens(historicoNE, anoNE, values_inputNE)
+    historicoNE['Subsistema'] = "NE"
+
+    df_mlt = pd.concat([historicoSE, historicoS, historicoN, historicoNE]).reset_index(drop=True)
+
+    failure = False; i = 2000
+    df_earm = pd.DataFrame
+    while failure == False:
+        url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/ena_subsistema_di/ENA_DIARIO_SUBSISTEMA_{i}.csv'
+        try:
+            # Lendo o CSV diretamente da URL com delimitador ';'
+            dados_ena = pd.read_csv(url, delimiter=';')
+        except Exception as e:
+            # print(f"Erro ao carregar o arquivo CSV: {e}")
+            failure = True
+        if i == 2000:
+            df_ena = dados_ena
+        elif failure == False: 
+            df_ena = pd.concat([df_ena, dados_ena])
+        i = i + 1
+    df_ena.replace({'NORDESTE': 'NE', 'NORTE': 'N','SUL': 'S','SUDESTE': 'SE'}, inplace=True)
+    df_ena = df_ena.drop(columns=["ena_bruta_regiao_percentualmlt", "ena_armazenavel_regiao_percentualmlt"])
+    df_ena['ena_data'] = pd.to_datetime(df_ena['ena_data'])
+    df_ena['month'] = df_ena['ena_data'].dt.month
+    def month_value_condition(row, df, ena):
+        month = row['month']
+        sub = row['nom_subsistema']
+        ena_value = row[ena]
         
-        file_content = ena_data.to_csv(index=False)
-        push_to_github(repo_name, file_name, commit_message, file_content, token)
-    upar()
+        subsistema_columns = {
+            'SE': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', 
+                '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
+            'N': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
+                '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
+            'NE': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
+                '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
+            'S': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
+                '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed']
+        }
+        
+        if sub in subsistema_columns:
+            month_column = subsistema_columns[sub][month - 1]  
+            value = ena_value * 100 / df.loc[(df['Subsistema'] == sub) & (df['Ano'] == 'media'), month_column].values[0]
+            return value
+        else:
+            return "Invalid subsistema"
+
+    df_ena['ena_bruta_regiao_percentualmlt'] = df_ena.apply(lambda row: month_value_condition(row, df_mlt, 'ena_bruta_regiao_mwmed'), axis=1)
+    df_ena['ena_armazenavel_regiao_percentualmlt'] = df_ena.apply(lambda row: month_value_condition(row, df_mlt, 'ena_armazenavel_regiao_mwmed'), axis=1)
+    df_ena = df_ena.drop(columns=['nom_subsistema']).reset_index(drop=True)
+    df_ena.replace({'SE': 'SE/CO'}, inplace=True)
+    df_mlt.replace({'SE': 'SE/CO'}, inplace=True)
+
+    aux = df_ena.groupby(['id_subsistema', 'month'])['ena_bruta_regiao_mwmed'].agg(['max', 'min']).reset_index()
+    df_ena = pd.merge(df_ena, aux, on=['id_subsistema', 'month'], how='left')
+    ena_data = df_ena
+
+        
+    # Atualizar o arquivo .txt com a data atual
+    atualizar_data_arquivo()
+    
+    file_content = ena_data.to_csv(index=False)
+    push_to_github(repo_name, file_name, commit_message, file_content, token)
 
 ena_data = pd.read_csv("Ena_atualizado.csv")
 
@@ -512,7 +535,7 @@ start_date, end_date = st.slider(
 st.session_state.slider_dates = (start_date, end_date)
 
 # Exibindo os componentes do Streamlit
-col3, col4 , col1, col2 = st.columns([1, 1, 1, 1])
+col3, col4 , col1, col2 = st.columns([1, 1, 1, 2])
 
 with col1:
     frequency = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2)  # 'Mensal' é o padrão
@@ -607,12 +630,12 @@ with st.spinner('Carregando gráfico...'):
                     y=subsystem_data[metric_column],
                     name=f"{subsystem}",
                     hovertemplate=( 
-                        'Data: %{customdata[2]: %MM/%yyyy}<br>' + 
-                        'Brasil: %{customdata[1]:.,1f}<br>' +
-                        ('<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[3]:.,1f}<br>' if 'SE/CO' in selected_subsystems else '') +
-                        ('<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[4]:.,1f}<br>' if 'S' in selected_subsystems else '') +
-                        ('<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[5]:.,1f}<br>' if 'NE' in selected_subsystems else '') +
-                        ('<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[6]:.,1f}<br>' if 'N' in selected_subsystems else '') +
+                        '<b>Data: </b>%{customdata[2]: %MM/%yyyy}<br>' + 
+                        '<b>Brasil: </b>%{customdata[1]:.,1f}<br>' +
+                        ('<span style="color:' + colors_dict['SE/CO'] + ';">█</span> <b>SE/CO: </b>%{customdata[3]:.,1f}<br>' if 'SE/CO' in selected_subsystems else '') +
+                        ('<span style="color:' + colors_dict['S'] + ';">█</span> <b>S: </b>%{customdata[4]:.,1f}<br>' if 'S' in selected_subsystems else '') +
+                        ('<span style="color:' + colors_dict['NE'] + ';">█</span> <b>NE: </b>%{customdata[5]:.,1f}<br>' if 'NE' in selected_subsystems else '') +
+                        ('<span style="color:' + colors_dict['N'] + ';">█</span> <b>N: </b>%{customdata[6]:.,1f}<br>' if 'N' in selected_subsystems else '') +
                         '<extra></extra>'
                     ),
                     marker_color=colors_dict[subsystem],
@@ -656,7 +679,7 @@ with st.spinner('Carregando gráfico...'):
             )
 
             # Formatar as datas para o formato desejado
-            formatted_ticks = [format_daily_date(date) for date in tick_dates]
+            formatted_ticks = [format_daily_date_tick(date) for date in tick_dates]
 
             # Atualizar o eixo X para usar essas datas formatadas
             fig_bar.update_xaxes(
@@ -684,7 +707,7 @@ with st.spinner('Carregando gráfico...'):
             )
 
             # Formatar as datas para o formato desejado
-            formatted_ticks = [format_week_date(date) for date in tick_dates]
+            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
 
             # Atualizar o eixo X para usar essas datas formatadas
             fig_bar.update_xaxes(
@@ -712,7 +735,7 @@ with st.spinner('Carregando gráfico...'):
             )
 
             # Formatar as datas para o formato desejado
-            formatted_ticks = [format_month_date(date) for date in tick_dates]
+            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
 
             # Atualizar o eixo X para usar essas datas formatadas
             fig_bar.update_xaxes(
@@ -945,7 +968,7 @@ with st.spinner('Carregando gráfico...'):
             showlegend=False,
             line=dict(width=0),
             customdata=customdata.values,  # Adicionando customdata com dados de data, max e min
-            hovertemplate="Data: %{customdata[0]}<br>Máximo: %{customdata[1]:.,1f}<br>Mínimo: %{customdata[2]:.,1f}<br>Realizado: %{customdata[3]:.,1f}<br>MLT: %{customdata[4]:.,1f}<br>ENA/MLT: %{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
+            hovertemplate="<b>Data: </b>%{customdata[0]}<br><b>Máximo: </b>%{customdata[1]:.,1f}<br><b>Mínimo: </b>%{customdata[2]:.,1f}<br><b>Realizado: </b>%{customdata[3]:.,1f}<br><b>MLT: </b>%{customdata[4]:.,1f}<br><b>ENA/MLT: </b>%{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
             ))
         
         fig_area_hist.add_trace(go.Scatter(
@@ -958,7 +981,7 @@ with st.spinner('Carregando gráfico...'):
             showlegend=False,
             line=dict(width=0),
             customdata=customdata.values,  # Adicionando customdata com dados de data, max e min
-            hovertemplate="Data: %{customdata[0]}<br>Máximo: %{customdata[1]:.,1f}<br>Mínimo: %{customdata[2]:.,1f}<br>Realizado: %{customdata[3]:.,1f}<br>MLT: %{customdata[4]:.,1f}<br>ENA/MLT: %{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
+            hovertemplate="<b>Data: </b>%{customdata[0]}<br><b>Máximo: </b>%{customdata[1]:.,1f}<br><b>Mínimo: </b>%{customdata[2]:.,1f}<br><b>Realizado: </b>%{customdata[3]:.,1f}<br><b>MLT: </b>%{customdata[4]:.,1f}<br><b>ENA/MLT: </b>%{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
             ))
     else:
         fig_area_hist.add_trace(go.Scatter(
@@ -970,7 +993,7 @@ with st.spinner('Carregando gráfico...'):
             showlegend=False,
             line=dict(width=0),
             customdata=customdata.values,  # Adicionando customdata com dados de data, max e min
-            hovertemplate="Data: %{customdata[0]}<br>Máximo: %{customdata[1]:.,1f}<br>Mínimo: %{customdata[2]:.,1f}<br>Realizado: %{customdata[3]:.,1f}<br>MLT: %{customdata[4]:.,1f}<br>ENA/MLT: %{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
+            hovertemplate="<b>Data: </b>%{customdata[0]}<br><b>Máximo: </b>%{customdata[1]:.,1f}<br><b>Mínimo: </b>%{customdata[2]:.,1f}<br><b>Realizado: </b>%{customdata[3]:.,1f}<br><b>MLT: </b>%{customdata[4]:.,1f}<br><b>ENA/MLT: </b>%{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
             ))
         
         fig_area_hist.add_trace(go.Scatter(
@@ -983,7 +1006,7 @@ with st.spinner('Carregando gráfico...'):
             showlegend=False,
             line=dict(width=0),
             customdata=customdata.values,  # Adicionando customdata com dados de data, max e min
-            hovertemplate="Data: %{customdata[0]}<br>Máximo: %{customdata[1]:.,1f}<br>Mínimo: %{customdata[2]:.,1f}<br>Realizado: %{customdata[3]:.,1f}<br>MLT: %{customdata[4]:.,1f}<br>ENA/MLT: %{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
+            hovertemplate="<b>Data: </b>%{customdata[0]}<br><b>Máximo: </b>%{customdata[1]:.,1f}<br><b>Mínimo: </b>%{customdata[2]:.,1f}<br><b>Realizado: </b>%{customdata[3]:.,1f}<br><b>MLT: </b>%{customdata[4]:.,1f}<br><b>ENA/MLT: </b>%{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
             ))
 
     # Linha tracejada para a média da ENA Bruta
@@ -999,7 +1022,7 @@ with st.spinner('Carregando gráfico...'):
             name='Realizado',
             line=dict(dash='solid', color='#323e47'),  # Linha tracejada em azul
             customdata=customdata.values,  # Adicionando customdata com dados de data, max e min
-            hovertemplate="Data: %{customdata[0]}<br>Máximo: %{customdata[1]:.,1f}<br>Mínimo: %{customdata[2]:.,1f}<br>Realizado: %{customdata[3]:.,1f}<br>MLT: %{customdata[4]:.,1f}<br>ENA/MLT: %{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
+            hovertemplate="<b>Data: </b>%{customdata[0]}<br><b>Máximo: </b>%{customdata[1]:.,1f}<br><b>Mínimo: </b>%{customdata[2]:.,1f}<br><b>Realizado: </b>%{customdata[3]:.,1f}<br><b>MLT: </b>%{customdata[4]:.,1f}<br><b>ENA/MLT: </b>%{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
             ))
             # Adicionar a linha de médias mensais (linha pontilhada sem marcadores)
         fig_area_hist.add_trace(go.Scatter(
@@ -1011,7 +1034,7 @@ with st.spinner('Carregando gráfico...'):
             xperiodalignment="start",
             line=dict(color='#67aeaa', dash='dash'),  # Linha contínua (não pontilhada)
             customdata=customdata.values,  # Adicionando customdata com dados de data, max e min
-            hovertemplate="Data: %{customdata[0]}<br>Máximo: %{customdata[1]:.,1f}<br>Mínimo: %{customdata[2]:.,1f}<br>Realizado: %{customdata[3]:.,1f}<br>MLT: %{customdata[4]:.,1f}<br>ENA/MLT: %{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
+            hovertemplate="<b>Data: </b>%{customdata[0]}<br><b>Máximo: </b>%{customdata[1]:.,1f}<br><b>Mínimo: </b>%{customdata[2]:.,1f}<br><b>Realizado: </b>%{customdata[3]:.,1f}<br><b>MLT: </b>%{customdata[4]:.,1f}<br><b>ENA/MLT: </b>%{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
             ))
     else:
         fig_area_hist.add_trace(go.Scatter(
@@ -1021,7 +1044,7 @@ with st.spinner('Carregando gráfico...'):
             name='Realizado',
             line=dict(dash='solid', color='#323e47'),  # Linha tracejada em azul
             customdata=customdata.values,  # Adicionando customdata com dados de data, max e min
-            hovertemplate="Data: %{customdata[0]}<br>Máximo: %{customdata[1]:.,1f}<br>Mínimo: %{customdata[2]:.,1f}<br>Realizado: %{customdata[3]:.,1f}<br>MLT: %{customdata[4]:.,1f}<br>ENA/MLT: %{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
+            hovertemplate="<b>Data: </b>%{customdata[0]}<br><b>Máximo: </b>%{customdata[1]:.,1f}<br><b>Mínimo: </b>%{customdata[2]:.,1f}<br><b>Realizado: </b>%{customdata[3]:.,1f}<br><b>MLT:</b> %{customdata[4]:.,1f}<br><b>ENA/MLT: </b>%{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
             ))
         fig_area_hist.add_trace(go.Scatter(
             x=(mean_ena_data_hist['ena_data']- pd.DateOffset(months=1)),  # Usar as datas filtradas
@@ -1030,7 +1053,7 @@ with st.spinner('Carregando gráfico...'):
             name='MLT',
             line=dict(color='#67aeaa', dash='dash'),  # Linha vermelha pontilhada
             customdata=customdata.values,  # Adicionando customdata com dados de data, max e min
-            hovertemplate="Data: %{customdata[0]}<br>Máximo: %{customdata[1]:.,1f}<br>Mínimo: %{customdata[2]:.,1f}<br>Realizado: %{customdata[3]:.,1f}<br>MLT: %{customdata[4]:.,1f}<br>ENA/MLT: %{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
+            hovertemplate="<b>Data: </b>%{customdata[0]}<br><b>Máximo: </b>%{customdata[1]:.,1f}<br><b>Mínimo: </b>%{customdata[2]:.,1f}<br><b>Realizado: </b>%{customdata[3]:.,1f}<br><b>MLT: </b>%{customdata[4]:.,1f}<br><b>ENA/MLT: </b>%{customdata[5]:.,1f}%<extra></extra>"  # Exibindo data e max no hover
             ))
 
     max_value = agg_subsystem_data_hist['max'].max()
@@ -1073,7 +1096,7 @@ with st.spinner('Carregando gráfico...'):
 
         # Formatar as datas para o formato desejado
         tick_dates = [first_date] + list(tick_dates) + [last_date]
-        formatted_ticks = [format_daily_date(date) for date in tick_dates]
+        formatted_ticks = [format_daily_date_tick(date) for date in tick_dates]
         # Atualizar o eixo X para usar essas datas formatadas
         fig_area_hist.update_xaxes(
             tickmode='array',
@@ -1100,7 +1123,7 @@ with st.spinner('Carregando gráfico...'):
 
         # Formatar as datas para o formato desejado
         tick_dates = [first_date] + list(tick_dates) + [last_date]
-        formatted_ticks = [format_week_date(date) for date in tick_dates]
+        formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
         # Atualizar o eixo X para usar essas datas formatadas
         fig_area_hist.update_xaxes(
             tickmode='array',
@@ -1127,7 +1150,7 @@ with st.spinner('Carregando gráfico...'):
 
         # Formatar as datas para o formato desejado
         tick_dates = [first_date] + list(tick_dates) + [last_date]
-        formatted_ticks = [format_month_date(date) for date in tick_dates]
+        formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
         # Atualizar o eixo X para usar essas datas formatadas
         fig_area_hist.update_xaxes(
             tickmode='array',
