@@ -212,8 +212,8 @@ data_arquivo = ler_data_arquivo()
 locale = Locale('pt', 'BR')
 
 if (data_atual > data_arquivo and data_atual.hour >= 2):
-    st.write(data_atual)
-    st.write(data_arquivo)
+    st.write(data_atual.date())
+    st.write(data_arquivo.date())
     st.write(data_atual.hour)
     def authenticate_github(token):
         g = Github(token)
