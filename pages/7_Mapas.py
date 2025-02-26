@@ -402,37 +402,41 @@ with col_right:
 data_options = get_data_options()
 with col_center:
     # Filtro de mapas
-    filter_columns = st.columns(len(st.session_state.selected_filters))  # Uma coluna para cada filtro
-    for i, filter_set in enumerate(st.session_state.selected_filters):
-        with filter_columns[i]:
-            st.subheader(f"Mapa {i + 1}")
+    # Garantir que o número de colunas seja pelo menos 1
+num_columns = max(1, len(st.session_state.selected_filters))  # Garantir que haja pelo menos uma coluna
+filter_columns = st.columns(num_columns)  # Uma coluna para cada filtro
 
-            # Seleção de Tipo
-            tipo = st.selectbox(f"Tipo", options=["", "SOLO", "ANOMALIA", "PRECIPITACAO"], key=f"tipo_{i}", format_func=lambda x: tipo_mapping.get(x, x))
-            
-            # Seleção de Data, baseada no tipo
-            if tipo:
-                data = st.selectbox(f"Data", options=[""] + data_options, key=f"data_{i}")
-            else:
-                data = ""
-            
-            # Se tipo for "SOLO", desabilitar o filtro de previsão
-            if data:  # Só exibe "Data (Previsão)" se houver uma "Data" selecionada
-                if tipo == "SOLO":
-                    forecast_data = ""
-                    st.selectbox(f"Data (Previsão)", options=[""] + get_forecast_data_options_for_date(data), disabled=True, key=f"forecast_data_{i}")
-                else:
-                    # Atualizar as opções de "Data (Previsão)" dependendo da "Data"
-                    forecast_data = st.selectbox(f"Data (Previsão)", options=[""] + get_forecast_data_options_for_date(data), key=f"forecast_data_{i}")
-            else:
-                forecast_data = ""  # Se "Data" não for selecionado, não mostra "Data (Previsão)"
+for i, filter_set in enumerate(st.session_state.selected_filters):
+    with filter_columns[i]:
+        st.subheader(f"Mapa {i + 1}")
 
-            # Atualizando o estado do filtro
-            st.session_state.selected_filters[i] = {
-                "data": data, 
-                "tipo": tipo, 
-                "forecast_data": forecast_data
-            }
+        # Seleção de Tipo
+        tipo = st.selectbox(f"Tipo", options=["", "SOLO", "ANOMALIA", "PRECIPITACAO"], key=f"tipo_{i}", format_func=lambda x: tipo_mapping.get(x, x))
+        
+        # Seleção de Data, baseada no tipo
+        if tipo:
+            data = st.selectbox(f"Data", options=[""] + data_options, key=f"data_{i}")
+        else:
+            data = ""
+        
+        # Se tipo for "SOLO", desabilitar o filtro de previsão
+        if data:  # Só exibe "Data (Previsão)" se houver uma "Data" selecionada
+            if tipo == "SOLO":
+                forecast_data = ""
+                st.selectbox(f"Data (Previsão)", options=[""] + get_forecast_data_options_for_date(data), disabled=True, key=f"forecast_data_{i}")
+            else:
+                # Atualizar as opções de "Data (Previsão)" dependendo da "Data"
+                forecast_data = st.selectbox(f"Data (Previsão)", options=[""] + get_forecast_data_options_for_date(data), key=f"forecast_data_{i}")
+        else:
+            forecast_data = ""  # Se "Data" não for selecionado, não mostra "Data (Previsão)"
+
+        # Atualizando o estado do filtro
+        st.session_state.selected_filters[i] = {
+            "data": data, 
+            "tipo": tipo, 
+            "forecast_data": forecast_data
+        }
+
 
 if st.button("Gerar Comparação", key="gerar_comparacao", help="Clique para gerar comparação"):
     images_per_row = 4
