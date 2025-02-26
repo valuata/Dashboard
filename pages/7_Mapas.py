@@ -371,7 +371,7 @@ st.write("---")
 st.write("")
 st.write("")
 if 'selected_filters' not in st.session_state:
-    st.session_state.selected_filters = []
+    st.session_state.selected_filters = [{"data": "", "tipo": "", "forecast_data": ""}, {"data": "", "tipo": "", "forecast_data": ""}]
 # Coluna para o título
 st.header("Comparação")
 
