@@ -211,6 +211,269 @@ arquivo_data = 'data_atual_ena.txt'
 data_arquivo = ler_data_arquivo()
 locale = Locale('pt', 'BR')
 
+if (data_atual > data_arquivo and data_atual.hour >= 2):
+    st.write(data_atual)
+    st.write(data_arquivo)
+    st.write(data_atual.hour)
+    def authenticate_github(token):
+        g = Github(token)
+        return g
+
+    def push_to_github(repo_name, file_name, commit_message, file_content, token):
+
+        g = authenticate_github(token)
+        repo = g.get_repo(repo_name)
+
+        file = repo.get_contents(file_name)
+
+            # Update the file
+        repo.update_file(file.path, commit_message, file_content, file.sha)
+
+    def atualizar_data_arquivo():
+        with open(arquivo_data, 'w') as file:
+            file.write(datetime.today().strftime('%d/%m/%Y'))
+
+        with open(arquivo_data, 'r') as file:
+            file_content = file.read()
+        push_to_github(repo_name, "data_atual_ena.txt", "Update Data", file_content, token)
+
+    with open("token1.txt", 'r') as file:
+            token1 = file.read()
+
+    with open("token2.txt", 'r') as file:
+            token2 = file.read()
+
+    token = token1 + token2
+    repo_name = "valuata/Dashboard"  #GitHub repository name
+    file_name = "Ena_atualizado.csv"  #  desired file name
+    commit_message = "Update Ena"  #  commit message
+    def upar():
+        #TEM QUE SER *ESSE* ARQUIVO
+        historico = pd.read_csv("Enas_Subsistemas_1931-2022.csv")
+
+        # Função para calcular médias, mínimos e máximos, e atualizar porcentagens
+        def calcular_estatisticas_e_atualizar_porcentagens(df, novo_ano, novos_valores):
+
+            if novo_ano in df['Ano'].values:
+                print(f"O ano {novo_ano} já existe no DataFrame. Nenhuma ação será realizada.")
+                return df
+            df = df.drop(columns=['Subsistema', '(min)MWmed',	'(min)% med.',	'(max)MWmed', '(max)% med.','(jan)% med.', '(fev)% med.', '(mar)% med.', '(abr)% med.', '(mai)% med.','(jun)% med.', '(jul)% med.', '(ago)% med.', '(set)% med.', '(out)% med.', '(nov)% med.', '(dez)% med.',])
+            try : df =  df.drop(columns= ['(jandez)MWmed','(jandez)% med.'])
+            except : df =  df.drop(columns= ['(jnd)MWmed','(jnd)% med.'])
+            df = df[:-1]
+            nova_linha = {'Ano': novo_ano}
+            for mes, valor in zip(['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'], novos_valores):
+                nova_linha[mes] = valor
+                
+            df = pd.concat([df, pd.DataFrame([nova_linha])], ignore_index=True)
+                # Drop the last row (old mean) if it exists
+            df.iloc[:, 1:13] = df.iloc[:, 1:13].apply(pd.to_numeric, errors='coerce')  # Converts non-numeric values to NaN
+            df['(min)MWmed'] = df.iloc[:, 1:13].min(axis=1)
+            df['(jnd)MWmed'] = df.iloc[:, 1:13].mean(axis=1)
+            df['(max)MWmed'] = df.iloc[:, 1:13].max(axis=1)
+            meses = ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed']
+            mjdm = ['(min)MWmed', '(jnd)MWmed', '(max)MWmed']
+            ano_atual = "media"  # Próximo ano
+
+            # Calcular médias mensais
+            media_row = {'Ano': ano_atual}
+            for mes in meses:
+                media_row[mes] = df[mes].mean()  # Média dos valores para cada mês
+                
+            means = [df[mes].mean() for mes in meses]
+
+            for idx in range(len(df)):
+                for i in range(len(meses)):
+                    value_col = df.iloc[idx][meses[i]]  # Valor atual
+                    if pd.notna(value_col) and means[i] != 0:  # Previne divisão por zero
+                        df.loc[idx, f'{meses[i][0:5]}% med.'] = (value_col / means[i]) * 100
+                    else:
+                        df.loc[idx, f'{meses[i][0:5]}% med.'] = 100  # Define como None se valor for NaN ou média for 0
+
+            means2 = df['(jnd)MWmed'].mean()
+
+            for idx in range(len(df)):
+                for i in range(len(mjdm)):
+                    value_col = df.iloc[idx][mjdm[i]]  # Valor atual
+                    if pd.notna(value_col) and means2 != 0:  # Previne divisão por zero
+                        df.loc[idx, f'{mjdm[i][0:5]}% med.'] = (value_col / means2) * 100
+                    else:
+                        df.loc[idx, f'{mjdm[i][0:5]}% med.'] = 100 
+            
+            # Adiciona a nova linha com as estatísticas
+            df = pd.concat([df, pd.DataFrame([media_row])], ignore_index=True)
+            df = df.fillna(100)    
+
+            return df
+
+        def inicio_SE(historicoSE):
+
+            # Escreva os valores para a região SE na ordem dos meses (jan, fev, mar, ..., dez)
+            values_input = [71658, 78130, 52904,  41024, 26938, 24249, 16822, 16036, 16085, 24508, 24449, 43079]
+
+            historicoSE = historicoSE[historicoSE['Ano'] != 2022]
+
+            # Calcula estatísticas e atualiza porcentagens
+            historicoSE = calcular_estatisticas_e_atualizar_porcentagens(historicoSE, 2022, values_input)
+            historicoSE['Subsistema'] = "SE"
+            return historicoSE
+
+        def inicio_N(historicoN):
+
+            # Escreva os valores para a região N na ordem dos meses (jan, fev, mar, ..., dez)
+            values_input = [35162, 30798, 32737,  29655, 17111, 8829, 4573, 2739, 1763, 1718, 3841, 10253]
+
+            historicoN = historicoN[historicoN['Ano'] != 2022]
+
+
+            # Calcula estatísticas e atualiza porcentagens
+            historicoN = calcular_estatisticas_e_atualizar_porcentagens(historicoN, 2022, values_input)
+            historicoN['Subsistema'] = "N"
+            return historicoN
+
+        def inicio_S(historicoS):
+
+            # Escreva os valores para a região S na ordem dos meses (jan, fev, mar, ..., dez)
+            values_input = [2802, 2751, 6990,  10176, 18906, 24482, 7823, 12663, 9727, 20738, 7820, 8163]
+
+            historicoS = historicoS[historicoS['Ano'] != 2022]
+
+            # Calcula estatísticas e atualiza porcentagens
+            historicoS = calcular_estatisticas_e_atualizar_porcentagens(historicoS, 2022, values_input)
+            historicoS['Subsistema'] = "S"
+            return historicoS
+
+        def inicio_NE(historicoNE):
+
+            # Escreva os valores para a região NE na ordem dos meses (jan, fev, mar, ..., dez)
+            values_input = [17924, 20879, 17281,  7449, 3678, 2857, 2445, 2056, 2234, 1912, 4270, 9539]
+
+            historicoNE = historicoNE[historicoNE['Ano'] != 2022]
+
+            # Calcula estatísticas e atualiza porcentagens
+            historicoNE = calcular_estatisticas_e_atualizar_porcentagens(historicoNE, 2022, values_input)
+            historicoNE['Subsistema'] = "NE"
+            return historicoNE
+
+        # Categorização e inicialização do histórico do subsistema SE
+        historicoSE = historico[historico['Subsistema'] == 'SECO']
+        historicoSE = inicio_SE(historicoSE)
+
+        # Escreva os valores para a região SE na ordem dos meses (jan, fev, mar, ..., dez)
+        values_inputSE = [71658, 78130, 52904,  41024, 26938, 24249, 16822, 16036, 16085, 24508, 24449, 43079]
+
+        # Escreva o ano que você deseja adicionar
+        anoSE = 2022
+
+        # Calcula estatísticas e atualiza porcentagens
+        historicoSE = calcular_estatisticas_e_atualizar_porcentagens(historicoSE, anoSE, values_inputSE)
+        historicoSE['Subsistema'] = "SE"
+
+        # Categorização do histórico do subsistema N
+        historicoN = historico[historico['Subsistema'] == 'N']
+        historicoN = inicio_N(historicoN)
+
+        # Escreva os valores para a região N na ordem dos meses (jan, fev, mar, ..., dez)
+        values_input = [35162, 30798, 32737,  29655, 17111, 8829, 4573, 2739, 1763, 1718, 3841, 10253]
+
+        # Escreva o ano que você deseja adicionar
+        ano = 2022
+
+        # Calcula estatísticas e atualiza porcentagens
+        historicoN = calcular_estatisticas_e_atualizar_porcentagens(historicoN, ano, values_input)
+        historicoN['Subsistema'] = "N"
+
+
+        # Categorização do histórico do subsistema S
+        historicoS = historico[historico['Subsistema'] == 'S']
+        historicoS = inicio_S(historicoS)
+
+        # Escreva os valores para a região S na ordem dos meses (jan, fev, mar, ..., dez)
+        values_inputS = [2802, 2751, 6990,  10176, 18906, 24482, 7823, 12663, 9727, 20738, 7820, 8163]
+
+        # Escreva o ano que você deseja adicionar
+        anoS = 2022
+        # Calcula estatísticas e atualiza porcentagens
+
+        historicoS = calcular_estatisticas_e_atualizar_porcentagens(historicoS, anoS, values_inputS)
+        historicoS['Subsistema'] = "S"
+
+        # Categorização do histórico do subsistema NE
+        historicoNE = historico[historico['Subsistema'] == 'NE']
+        historicoNE = inicio_NE(historicoNE)
+
+        # Escreva os valores para a região NE na ordem dos meses (jan, fev, mar, ..., dez)
+        values_inputNE = [17924, 20879, 17281,  7449, 3678, 2857, 2445, 2056, 2234, 1912, 4270, 9539]
+
+        # Escreva o ano que você deseja adicionar
+        anoNE = 2022
+
+        # Calcula estatísticas e atualiza porcentagens
+        historicoNE = calcular_estatisticas_e_atualizar_porcentagens(historicoNE, anoNE, values_inputNE)
+        historicoNE['Subsistema'] = "NE"
+
+        df_mlt = pd.concat([historicoSE, historicoS, historicoN, historicoNE]).reset_index(drop=True)
+
+        failure = False; i = 2000
+        df_earm = pd.DataFrame
+        while failure == False:
+            url = f'https://ons-aws-prod-opendata.s3.amazonaws.com/dataset/ena_subsistema_di/ENA_DIARIO_SUBSISTEMA_{i}.csv'
+            try:
+                # Lendo o CSV diretamente da URL com delimitador ';'
+                dados_ena = pd.read_csv(url, delimiter=';')
+            except Exception as e:
+                # print(f"Erro ao carregar o arquivo CSV: {e}")
+                failure = True
+            if i == 2000:
+                df_ena = dados_ena
+            elif failure == False: 
+                df_ena = pd.concat([df_ena, dados_ena])
+            i = i + 1
+        df_ena.replace({'NORDESTE': 'NE', 'NORTE': 'N','SUL': 'S','SUDESTE': 'SE'}, inplace=True)
+        df_ena = df_ena.drop(columns=["ena_bruta_regiao_percentualmlt", "ena_armazenavel_regiao_percentualmlt"])
+        df_ena['ena_data'] = pd.to_datetime(df_ena['ena_data'])
+        df_ena['month'] = df_ena['ena_data'].dt.month
+        def month_value_condition(row, df, ena):
+            month = row['month']
+            sub = row['nom_subsistema']
+            ena_value = row[ena]
+            
+            subsistema_columns = {
+                'SE': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed', 
+                    '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
+                'N': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
+                    '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
+                'NE': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
+                    '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed'],
+                'S': ['(jan)MWmed', '(fev)MWmed', '(mar)MWmed', '(abr)MWmed', '(mai)MWmed', '(jun)MWmed',
+                    '(jul)MWmed', '(ago)MWmed', '(set)MWmed', '(out)MWmed', '(nov)MWmed', '(dez)MWmed']
+            }
+            
+            if sub in subsistema_columns:
+                month_column = subsistema_columns[sub][month - 1]  
+                value = ena_value * 100 / df.loc[(df['Subsistema'] == sub) & (df['Ano'] == 'media'), month_column].values[0]
+                return value
+            else:
+                return "Invalid subsistema"
+
+        df_ena['ena_bruta_regiao_percentualmlt'] = df_ena.apply(lambda row: month_value_condition(row, df_mlt, 'ena_bruta_regiao_mwmed'), axis=1)
+        df_ena['ena_armazenavel_regiao_percentualmlt'] = df_ena.apply(lambda row: month_value_condition(row, df_mlt, 'ena_armazenavel_regiao_mwmed'), axis=1)
+        df_ena = df_ena.drop(columns=['nom_subsistema']).reset_index(drop=True)
+        df_ena.replace({'SE': 'SE/CO'}, inplace=True)
+        df_mlt.replace({'SE': 'SE/CO'}, inplace=True)
+
+        aux = df_ena.groupby(['id_subsistema', 'month'])['ena_bruta_regiao_mwmed'].agg(['max', 'min']).reset_index()
+        df_ena = pd.merge(df_ena, aux, on=['id_subsistema', 'month'], how='left')
+        ena_data = df_ena
+
+            
+        # Atualizar o arquivo .txt com a data atual
+        atualizar_data_arquivo()
+        
+        file_content = ena_data.to_csv(index=False)
+        push_to_github(repo_name, file_name, commit_message, file_content, token)
+    upar()
+
 ena_data = pd.read_csv("Ena_atualizado.csv")
 
 st.title("ENA")
