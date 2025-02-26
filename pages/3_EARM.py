@@ -108,8 +108,22 @@ st.markdown("""
         } 
         hr {
             border: 0;
-            height: 0.7px !important;
             background-color: #67AEAA;  /* Cor do tracinho */
+        }
+        hr:not([size]) {
+            height: 2px;
+        }
+        .st-cu {
+            border-bottom-left-radius: 0;
+        }
+        .st-ct {
+            border-bottom-right-radius: 0;
+        }
+        .st-cs {
+            border-top-right-radius: 0;
+        }
+        .st-cr {
+            border-top-left-radius: 0;
         }
         div[data-baseweb="select"] {
             width: 80%;
@@ -167,6 +181,14 @@ def format_month_date(date):
     return format_date(date, format='MM/yyyy', locale='pt_BR').upper()
 def format_daily_date(date):
     return date.strftime('%d/%m/%Y')
+def format_week_date_tick(date):
+    # Calcula o número da semana dentro do mês
+    week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
+    return f"S{week_number}/{format_date(date, format='yyyy', locale='pt_BR').upper()}"
+def format_month_date_tick(date):
+    return format_date(date, format='yyyy', locale='pt_BR').upper()
+def format_daily_date_tick(date):
+    return date.strftime('%Y')
 
 def make_subsystem_gauge_charts(data, metric_column, sim_column):
     # Define a ordem dos velocímetros para garantir que sejam colocados de forma organizada
@@ -336,7 +358,7 @@ arquivo_data = 'data_atual_earm.txt'
 data_arquivo = ler_data_arquivo()
 locale = Locale('pt', 'BR')
 
-if (data_atual > data_arquivo and data_atual.hour >= 2):
+if (data_atual.date() > data_arquivo.date() and data_atual.hour >= 2):
 
     def authenticate_github(token):
         g = Github(token)
@@ -417,7 +439,7 @@ earm_data['ear_data'] = pd.to_datetime(earm_data['ear_data'])
 # Última data disponível
 latest_date = earm_data['ear_data'].max()
 latest_data = earm_data[earm_data['ear_data'] == latest_date]
-st.subheader('Nível dos reservatórios atual:')
+st.subheader('Nível atual dos reservatórios:')
 
 # Gráficos de gauge para os subsistemas
 fig_atual_sim = make_subsystem_gauge_charts(latest_data, 'ear_verif_subsistema_percentual', 'verif_max_ratio')
@@ -457,7 +479,7 @@ start_date_slider, end_date_slider = st.slider(
 st.session_state.slider_dates = (start_date_slider, end_date_slider)
 
 # Filtros para o resto da página
-col3, col4 , col1, col2 = st.columns([1, 1, 1, 1])
+col3, col4 , col1, col2 = st.columns([1, 1, 1, 2])
 with col1:
     frequency = st.radio("**Frequência**", ['Diário', 'Semanal', 'Mensal'], index=2)  # Começar com "Mensal" selecionado
     metric = 'MWmês'
@@ -545,17 +567,17 @@ with st.spinner('Carregando gráfico...'):
                                             format_decimal(sum_val, locale='pt_BR', format="#,##0."), formatted_date])
     
                     # Criar o hovertemplate dinâmico com base nos subsistemas selecionados
-                    hovertemplate = '%{customdata[5]}: <br>' +  \
-                                    'BRASIL: %{customdata[4]:.,1f}<br>'
+                    hovertemplate = '<b>Data: </b>%{customdata[5]}: <br>' +  \
+                                    '<b>BRASIL: </b>%{customdata[4]:.,1f}<br>'
     
                     if 'SE/CO' in selected_subsystems:
-                        hovertemplate += '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> SE/CO: %{customdata[0]:.,0f}<br>'
+                        hovertemplate += '<span style="color:' + colors_dict['SE/CO'] + ';">█</span> <b>SE/CO: </b>%{customdata[0]:.,0f}<br>'
                     if 'S' in selected_subsystems:
-                        hovertemplate += '<span style="color:' + colors_dict['S'] + ';">█</span> S: %{customdata[1]:.,0f}<br>'
+                        hovertemplate += '<span style="color:' + colors_dict['S'] + ';">█</span> <b>S: </b>%{customdata[1]:.,0f}<br>'
                     if 'NE' in selected_subsystems:
-                        hovertemplate += '<span style="color:' + colors_dict['NE'] + ';">█</span> NE: %{customdata[2]:.,0f}<br>'
+                        hovertemplate += '<span style="color:' + colors_dict['NE'] + ';">█</span> <b>NE: </b>%{customdata[2]:.,0f}<br>'
                     if 'N' in selected_subsystems:
-                        hovertemplate += '<span style="color:' + colors_dict['N'] + ';">█</span> N: %{customdata[3]:.,0f}<br>'
+                        hovertemplate += '<span style="color:' + colors_dict['N'] + ';">█</span> <b>N: </b>%{customdata[3]:.,0f}<br>'
     
                     hovertemplate += '<extra></extra>'
     
@@ -609,7 +631,7 @@ with st.spinner('Carregando gráfico...'):
             )
     
             # Formatar as datas para o formato desejado
-            formatted_ticks = [format_daily_date(date) for date in tick_dates]
+            formatted_ticks = [format_daily_date_tick(date) for date in tick_dates]
     
             # Atualizar o eixo X para usar essas datas formatadas
             fig_stacked.update_xaxes(
@@ -637,7 +659,7 @@ with st.spinner('Carregando gráfico...'):
             )
     
             # Formatar as datas para o formato desejado
-            formatted_ticks = [format_week_date(date) for date in tick_dates]
+            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
     
             # Atualizar o eixo X para usar essas datas formatadas
             fig_stacked.update_xaxes(
@@ -665,7 +687,7 @@ with st.spinner('Carregando gráfico...'):
             )
     
             # Formatar as datas para o formato desejado
-            formatted_ticks = [format_month_date(date) for date in tick_dates]
+            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
     
             # Atualizar o eixo X para usar essas datas formatadas
             fig_stacked.update_xaxes(
@@ -843,10 +865,10 @@ with st.spinner('Carregando gráfico...'):
                 marker_color=colors_dict[selected_subsystem_bottom],
                 customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
                 hovertemplate=(
-                    "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
-                    "EARM: %{customdata[2]:.,0f}<br>"  # Exibe o valor formatado
-                    "Capacidade Máxima: %{customdata[4]:.,0f}<br>"
-                    "Capacidade Utilizada: %{customdata[0]:.,1f}%<br>"  # Exibe o valor de customdata (percentual)
+                    "<b>Data: </b>%{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
+                    "<b>EARM: </b>%{customdata[2]:.,0f}<br>"  # Exibe o valor formatado
+                    "<b>Capacidade Máxima: </b>%{customdata[4]:.,0f}<br>"
+                    "<b>Capacidade Utilizada: </b>%{customdata[0]:.,1f}%<br>"  # Exibe o valor de customdata (percentual)
                 ),
             ))
 
@@ -858,10 +880,10 @@ with st.spinner('Carregando gráfico...'):
                 marker_color='rgba(0, 0, 0, 0.2)',
                 customdata=subsystem_data_bottom[['ear_verif_subsistema_percentual', 'ear_data', 'formatted_value', 'formatted_date', 'formatted_remaining_capacity']],  # Adiciona as colunas formatadas
                 hovertemplate=(
-                    "Data: %{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
-                    "EARM: %{customdata[2]:.,0f}<br>"  # Exibe a capacidade restante formatada
-                    "Capacidade Máxima: %{customdata[4]:.,0f}<br>"  # Exibe o valor da capacidade restante formatado
-                    "Capacidade Utilizada: %{customdata[0]:.,1f}%<br>"  # Exibe o valor de customdata (percentual)
+                    "<b>Data: </b>%{customdata[3]}<br>"  # Formata a data da barra com a `formatted_date`
+                    "<b>EARM: </b>%{customdata[2]:.,0f}<br>"  # Exibe a capacidade restante formatada
+                    "<b>Capacidade Máxima: </b>%{customdata[4]:.,0f}<br>"  # Exibe o valor da capacidade restante formatado
+                    "<b>Capacidade Utilizada: </b>%{customdata[0]:.,1f}%<br>"  # Exibe o valor de customdata (percentual)
                 ),
                 showlegend=False,
             ))
@@ -896,7 +918,7 @@ with st.spinner('Carregando gráfico...'):
                 )
         
                 # Formatar as datas para o formato desejado
-                formatted_ticks = [format_daily_date(date) for date in tick_dates]
+                formatted_ticks = [format_daily_date_tick(date) for date in tick_dates]
         
                 # Atualizar o eixo X para usar essas datas formatadas
                 fig_bottom.update_xaxes(
@@ -923,7 +945,7 @@ with st.spinner('Carregando gráfico...'):
                     freq=freq
                 )
                 # Formatar as datas para o formato desejado
-                formatted_ticks = [format_week_date(date) for date in tick_dates]
+                formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
         
                 # Atualizar o eixo X para usar essas datas formatadas
                 fig_bottom.update_xaxes(
@@ -951,7 +973,7 @@ with st.spinner('Carregando gráfico...'):
                 )
         
                 # Formatar as datas para o formato desejado
-                formatted_ticks = [format_month_date(date) for date in tick_dates]
+                formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
         
                 # Atualizar o eixo X para usar essas datas formatadas
                 fig_bottom.update_xaxes(
