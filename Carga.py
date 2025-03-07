@@ -4,10 +4,11 @@ import plotly.graph_objs as go
 from datetime import datetime, timedelta
 from github import Github
 from babel import Locale
+import pyautogui
 from babel.numbers import format_decimal, format_currency
 from babel.dates import format_date
 
-
+screen_width, screen_height = pyautogui.size()
 st.set_page_config(page_title="Carga", layout="wide")
 import streamlit as st
 
@@ -180,6 +181,7 @@ def format_month_date(date):
     return format_date(date, format='MM/yyyy', locale='pt_BR').upper()
 def format_daily_date(date):
     return date.strftime('%d/%m/%Y')
+
 def format_week_date_tick(date):
     # Calcula o número da semana dentro do mês
     week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
@@ -434,12 +436,20 @@ with st.spinner('Carregando gráfico...'):
 
 
         if frequency == 'Diário':
-            fig.update_xaxes(
-                dtick="D1", 
-                tickformat="%Y", 
-                tickmode='auto',  
-                tickangle=0  
-            )
+            if screen_width <= 600: 
+                fig.update_xaxes(
+                    dtick="D1", 
+                    tickformat="%Y", 
+                    tickmode='auto',  
+                    tickangle=0  
+                )
+            else:
+                fig.update_xaxes(
+                    dtick="D1", 
+                    tickformat="%d/%m/%Y", 
+                    tickmode='auto',  
+                    tickangle=0  
+                )
         elif frequency == 'Semanal':
             num_ticks = 5  
 
@@ -455,8 +465,10 @@ with st.spinner('Carregando gráfico...'):
                 end=agg_data['din_instante'].max(), 
                 freq=freq
             )
-
-            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
+            if screen_width <= 600:
+                formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
+            else:
+                formatted_ticks = [format_week_date(date) for date in tick_dates]
 
             fig.update_xaxes(
                 tickmode='array',
@@ -479,7 +491,11 @@ with st.spinner('Carregando gráfico...'):
                 end=agg_data['din_instante'].max(), 
                 freq=freq
             )
-            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
+
+            if screen_width <= 600:
+                formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
+            else:
+                formatted_ticks = [format_month_date(date) for date in tick_dates]
 
             fig.update_xaxes(
                 tickmode='array',
