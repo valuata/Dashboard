@@ -38,6 +38,8 @@ toml==0.10.2
 tornado==6.4.1
 Babel==2.12.1
 xlsxwriter
+pyautogui
+pillow
 typing-extensions==4.12.2
 urllib3==2.2.3
 watchdog==5.0.3
