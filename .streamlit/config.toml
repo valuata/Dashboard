@@ -10,4 +10,5 @@ headless = true
 enableCORS = false
 enableWebsocketCompression = false
 port = 8501
+enableXsrfProtection = false
 address = "0.0.0.0"
