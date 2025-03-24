@@ -5,10 +5,14 @@ secondaryBackgroundColor="#FFFFFF"
 textColor="#323e47"
 [client]
 showSidebarNavigation = false
+[browser]
+serverAddress = "dashboard.valuata.com.br"
 [server]
 headless = true
 enableCORS = false
 enableWebsocketCompression = false
-port = 8501
+port = 443
 enableXsrfProtection = false
-address = "dashboards.valuata.com.br"
+address = "0.0.0.0"
+sslCertFile = "/etc/letsencrypt/live/dashboard.valuata.com.br/cert.pem"
+sslKeyFile = "/etc/letsencrypt/live/dashboard.valuata.com.br/privkey.pem"
