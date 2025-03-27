@@ -7,6 +7,7 @@ from babel import Locale
 import math
 from babel.numbers import format_decimal, format_currency
 from babel.dates import format_date
+import io
 
 st.set_page_config(page_title="ENA", layout="wide")
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
@@ -50,19 +51,19 @@ st.markdown("""
         }
         .st-b1 {
             border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
+            border-radius: 7px;         /* Bordas arredondadas */
         }
         .st-b2 {
             border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
+            border-radius: 7px;         /* Bordas arredondadas */
         }
         .st-b3 {
             border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
+            border-radius: 7px;         /* Bordas arredondadas */
         }
         .st-b4 {
             border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
+            border-radius: 7px;         /* Bordas arredondadas */
         }
         h1{
             text-transform: uppercase; 
@@ -71,14 +72,14 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 50%;
+            width: 60%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 50%;
+            width: 60%;
             outline: none;
             border: 1px solid #67AEAA; /* Mantém a borda quando está em foco */
         }
@@ -112,18 +113,6 @@ st.markdown("""
         }
         hr:not([size]) {
             height: 2px;
-        }
-        .st-cu {
-            border-bottom-left-radius: 0;
-        }
-        .st-ct {
-            border-bottom-right-radius: 0;
-        }
-        .st-cs {
-            border-top-right-radius: 0;
-        }
-        .st-cr {
-            border-top-left-radius: 0;
         }
         div[data-baseweb="select"] {
             width: 80%;
@@ -595,7 +584,7 @@ with st.spinner('Carregando gráfico...'):
 
         # Para cada subsistema selecionado, mas em uma ordem fixa
         ordered_subsystems = ['SE/CO', 'S', 'NE', 'N']
-
+        download1 = pd.DataFrame()
         for subsystem in ordered_subsystems:
             if subsystem in selected_subsystems:
                 subsystem_data = agg_data[agg_data['id_subsistema'] == subsystem]
@@ -641,6 +630,7 @@ with st.spinner('Carregando gráfico...'):
                     marker_color=colors_dict[subsystem],
                     customdata=custom_data
                 ))
+            download1 = pd.concat([download1, subsystem_data])
 
         # Atualizando o layout do gráfico de barras
         fig_bar.update_layout(
@@ -660,117 +650,89 @@ with st.spinner('Carregando gráfico...'):
             yaxis_tickmode='array',
             yaxis_nticks=5
         )
-        if frequency == 'Diário':
-            num_ticks = 5  # Quantidade de ticks desejados
 
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            days_diff = (agg_data['ena_data'].max() - agg_data['ena_data'].min()).days
+         # 1. Extrair os anos dos dados
+        agg_data['year'] = agg_data['ena_data'].dt.year
 
-            # Ensure we don't divide by zero
-            if days_diff == 0:
-                freq = 'D'  # Default to daily if the date range is only one day
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+        # 2. Encontrar a primeira ocorrência de cada ano
+        first_occurrences = agg_data.groupby('year')['ena_data'].min()
+        first_occurrences = first_occurrences.to_frame()
 
-            tick_dates = pd.date_range(
-                start=agg_data['ena_data'].min(), 
-                end=agg_data['ena_data'].max(), 
-                freq=freq
-            )
+        # 4. Formatar as datas de ticks (ajustar conforme necessário)
+        formatted_ticks = [format_month_date_tick(date) for date in first_occurrences['ena_data']]
 
-            # Formatar as datas para o formato desejado
-            formatted_ticks = [format_daily_date_tick(date) for date in tick_dates]
+        # 5. Atualizar o eixo X com essas datas e os rótulos formatados
+        fig_bar.update_xaxes(
+            tickmode='array',
+            tickvals=first_occurrences['ena_data'],  # Posições no eixo X para as primeiras datas de cada ano
+            ticktext=formatted_ticks,  # Rótulos formatados para os ticks
+            tickangle=0  # Ajuste do ângulo dos rótulos, se necessário
+        )
+        tick_interval = (max_y - min_y) / 5  # Dividir o intervalo em 5 partes
 
-            # Atualizar o eixo X para usar essas datas formatadas
-            fig_bar.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-        elif frequency == 'Semanal':
-            num_ticks = 5  # Quantidade de ticks desejados
+        # Gerar uma lista de valores para os ticks do eixo Y
+        tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+        tick_vals_rounded = [math.ceil(val / 5000) * 5000 for val in tick_vals]
 
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            days_diff = (agg_data['ena_data'].max() - agg_data['ena_data'].min()).days
+        # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
 
-            # Ensure we don't divide by zero
-            if days_diff == 0:
-                freq = 'D'  # Default to daily if the date range is only one day
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
-
-            tick_dates = pd.date_range(
-                start=agg_data['ena_data'].min(), 
-                end=agg_data['ena_data'].max(), 
-                freq=freq
-            )
-
-            # Formatar as datas para o formato desejado
-            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
-
-            # Atualizar o eixo X para usar essas datas formatadas
-            fig_bar.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-        else:
-            num_ticks = 5  # Quantidade de ticks desejados
-
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            days_diff = (agg_data['ena_data'].max() - agg_data['ena_data'].min()).days
-
-            # Ensure we don't divide by zero
-            if days_diff == 0:
-                freq = 'D'  # Default to daily if the date range is only one day
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
-
-            tick_dates = pd.date_range(
-                start=agg_data['ena_data'].min(), 
-                end=agg_data['ena_data'].max(), 
-                freq=freq
-            )
-
-            # Formatar as datas para o formato desejado
-            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
-
-            # Atualizar o eixo X para usar essas datas formatadas
-            fig_bar.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-            tick_interval = (max_y - min_y) / 5  # Dividir o intervalo em 5 partes
-
-            # Gerar uma lista de valores para os ticks do eixo Y
-            tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
-            tick_vals_rounded = [math.ceil(val / 5000) * 5000 for val in tick_vals]
-
-            # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
-            formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
-
-            # Atualizar o layout do gráfico com os valores dinâmicos
-            fig_bar.update_layout(
-                yaxis=dict(
-                    tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
-                    tickmode='array',    # Usar modo array para customizar os valores dos ticks
-                    tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
-                    ticktext=formatted_ticks,  # Textos dos ticks formatados
-                    ticks="inside",  # Exibir os ticks dentro do gráfico
-                    tickangle=0,     # Manter os ticks na horizontal
-                    nticks=6,        # Número de ticks desejados
-                ),
-            )
+        # Atualizar o layout do gráfico com os valores dinâmicos
+        fig_bar.update_layout(
+            yaxis=dict(
+                tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                ticktext=formatted_ticks,  # Textos dos ticks formatados
+                ticks="inside",  # Exibir os ticks dentro do gráfico
+                tickangle=0,     # Manter os ticks na horizontal
+                nticks=6,        # Número de ticks desejados
+            ),
+        )
 
         # Exibir gráfico de barras
         st.plotly_chart(fig_bar, config=config)
     else:
         st.write("Sem informações para a filtragem feita.")
+try:
+    download1['ena_bruta_regiao_mwmed'] = download1['ena_bruta_regiao_mwmed'].round(2)
+    download1['ena_bruta_regiao_mwmed'] = download1['ena_bruta_regiao_mwmed'].apply(lambda x: "{:,.2f}".format(x))
+    download1['ena_bruta_regiao_mwmed'] = download1['ena_bruta_regiao_mwmed'].astype(str)
+    download1['ena_bruta_regiao_mwmed'] = download1['ena_bruta_regiao_mwmed'].str.replace('.', ' ', regex=False)
+    download1['ena_bruta_regiao_mwmed'] = download1['ena_bruta_regiao_mwmed'].str.replace(',', '.', regex=False)
+    download1['ena_bruta_regiao_mwmed'] = download1['ena_bruta_regiao_mwmed'].str.replace(' ', ',', regex=False)
+    download1 = download1.rename(columns={'ena_bruta_regiao_mwmed': 'ENA Bruta (MWmed)'})
 
+except:
+    download1['ena_armazenavel_regiao_mwmed'] = download1['ena_armazenavel_regiao_mwmed'].round(2)
+    download1['ena_armazenavel_regiao_mwmed'] = download1['ena_armazenavel_regiao_mwmed'].apply(lambda x: "{:,.2f}".format(x))
+    download1['ena_armazenavel_regiao_mwmed'] = download1['ena_armazenavel_regiao_mwmed'].astype(str)
+    download1['ena_armazenavel_regiao_mwmed'] = download1['ena_armazenavel_regiao_mwmed'].str.replace('.', ' ', regex=False)
+    download1['ena_armazenavel_regiao_mwmed'] = download1['ena_armazenavel_regiao_mwmed'].str.replace(',', '.', regex=False)
+    download1['ena_armazenavel_regiao_mwmed'] = download1['ena_armazenavel_regiao_mwmed'].str.replace(' ', ',', regex=False)
+    download1 = download1.rename(columns={'ena_armazenavel_regiao_mwmed': 'ENA Armazenável (MWmed)'})
+
+download1 = download1.rename(columns={'ena_data': 'Data', 'id_subsistema': 'Submercado'})
+download1 = download1.drop(columns=['max','min'])
+if frequency == 'Mensal':
+# Subtrai um dia da data
+    download1['Data'] = download1['Data'] - pd.DateOffset(days=1)
+
+    # Ajusta a data para o primeiro dia do mês anterior
+    download1['Data'] = download1['Data'].apply(lambda x: pd.Timestamp(year=x.year, month=x.month, day=1))
+
+st.write('Download Gráfico 1')
+excel_file = io.BytesIO()
+with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+    download1.to_excel(writer, index=False, sheet_name='Sheet1')
+
+# Fazendo o download do arquivo Excel
+st.download_button(
+    label="DOWNLOAD",
+    data=excel_file.getvalue(),
+    file_name=f'Dados_ENA_({data_atual} - Gráfico 1).xlsx',  # Certifique-se de definir a variável data_atual
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 
 # Gráfico de Área (preenchendo entre max e min)
 st.write("")
@@ -1077,121 +1039,75 @@ with st.spinner('Carregando gráfico...'):
     )
     first_date = agg_subsystem_data_hist["ena_data"].min()
     last_date = agg_subsystem_data_hist["ena_data"].max()
-    if frequency_hist == 'Diário':
-        num_ticks = 5  # Quantidade de ticks desejados
-        # Selecione as datas para exibir no eixo X com base no número de ticks
-        days_diff = (agg_data['ena_data'].max() - agg_data['ena_data'].min()).days
 
-        # Ensure we don't divide by zero
-        if days_diff == 0:
-            freq = 'D'  # Default to daily if the date range is only one day
-        else:
-            freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+    agg_data['year'] = agg_data['ena_data'].dt.year
 
-        tick_dates = pd.date_range(
-            start=agg_data['ena_data'].min(), 
-            end=agg_data['ena_data'].max(), 
-            freq=freq
-        )
+    # 2. Encontrar a primeira ocorrência de cada ano
+    first_occurrences = agg_data.groupby('year')['ena_data'].min()
+    first_occurrences = first_occurrences.to_frame()
 
-        # Formatar as datas para o formato desejado
-        tick_dates = [first_date] + list(tick_dates) + [last_date]
-        formatted_ticks = [format_daily_date_tick(date) for date in tick_dates]
-        # Atualizar o eixo X para usar essas datas formatadas
-        fig_area_hist.update_xaxes(
-            tickmode='array',
-            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-            ticktext=formatted_ticks,  # Usar as datas formatadas
-            tickangle=0
-        )
-    elif frequency_hist == 'Semanal':
-        num_ticks = 5  # Quantidade de ticks desejados
-        # Selecione as datas para exibir no eixo X com base no número de ticks
-        days_diff = (agg_data['ena_data'].max() - agg_data['ena_data'].min()).days
+    # 4. Formatar as datas de ticks (ajustar conforme necessário)
+    formatted_ticks = [format_month_date_tick(date) for date in first_occurrences['ena_data']]
 
-        # Ensure we don't divide by zero
-        if days_diff == 0:
-            freq = 'D'  # Default to daily if the date range is only one day
-        else:
-            freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+    # 5. Atualizar o eixo X com essas datas e os rótulos formatados
+    fig_bar.update_xaxes(
+        tickmode='array',
+        tickvals=first_occurrences['ena_data'],  # Posições no eixo X para as primeiras datas de cada ano
+        ticktext=formatted_ticks,  # Rótulos formatados para os ticks
+        tickangle=0  # Ajuste do ângulo dos rótulos, se necessário
+    )
+    tick_interval = (max_value - min_y) / 5  # Dividir o intervalo em 5 partes
 
-        tick_dates = pd.date_range(
-            start=agg_data['ena_data'].min(), 
-            end=agg_data['ena_data'].max(), 
-            freq=freq
-        )
+    # Gerar uma lista de valores para os ticks do eixo Y
+    tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+    tick_vals_rounded = [math.ceil(val / 5000) * 5000 for val in tick_vals]
 
-        # Formatar as datas para o formato desejado
-        tick_dates = [first_date] + list(tick_dates) + [last_date]
-        formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
-        # Atualizar o eixo X para usar essas datas formatadas
-        fig_area_hist.update_xaxes(
-            tickmode='array',
-            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-            ticktext=formatted_ticks,  # Usar as datas formatadas
-            tickangle=0
-        )
-    else:
-        num_ticks = 5  # Quantidade de ticks desejados
-        # Selecione as datas para exibir no eixo X com base no número de ticks
-        days_diff = (agg_data['ena_data'].max() - agg_data['ena_data'].min()).days
+    # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+    formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
 
-        # Ensure we don't divide by zero
-        if days_diff == 0:
-            freq = 'D'  # Default to daily if the date range is only one day
-        else:
-            freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
-
-        tick_dates = pd.date_range(
-            start=agg_data['ena_data'].min(), 
-            end=agg_data['ena_data'].max(), 
-            freq=freq
-        )
-
-        # Formatar as datas para o formato desejado
-        tick_dates = [first_date] + list(tick_dates) + [last_date]
-        formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
-        # Atualizar o eixo X para usar essas datas formatadas
-        fig_area_hist.update_xaxes(
-            tickmode='array',
-            tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-            ticktext=formatted_ticks,  # Usar as datas formatadas
-            tickangle=0,
-        )
-        tick_interval = (max_value - min_y) / 5  # Dividir o intervalo em 5 partes
-
-        # Gerar uma lista de valores para os ticks do eixo Y
-        tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
-        tick_vals_rounded = [math.ceil(val / 5000) * 5000 for val in tick_vals]
-
-        # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
-        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
-
-        # Atualizar o layout do gráfico com os valores dinâmicos
-        fig_area_hist.update_layout(
-            yaxis=dict(
-                tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
-                tickmode='array',    # Usar modo array para customizar os valores dos ticks
-                tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
-                ticktext=formatted_ticks,  # Textos dos ticks formatados
-                ticks="inside",  # Exibir os ticks dentro do gráfico
-                tickangle=0,     # Manter os ticks na horizontal
-                nticks=6,        # Número de ticks desejados
-            ),
-        )
+    # Atualizar o layout do gráfico com os valores dinâmicos
+    fig_area_hist.update_layout(
+        yaxis=dict(
+            tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+            tickmode='array',    # Usar modo array para customizar os valores dos ticks
+            tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+            ticktext=formatted_ticks,  # Textos dos ticks formatados
+            ticks="inside",  # Exibir os ticks dentro do gráfico
+            tickangle=0,     # Manter os ticks na horizontal
+            nticks=6,        # Número de ticks desejados
+        ),
+    )
 
     # Exibir o gráfico
     st.plotly_chart(fig_area_hist, config=config)
 
-    import io
-    excel_file = io.BytesIO()
-    with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-        ena_data.to_excel(writer, index=False, sheet_name='Sheet1')
+filtered_dates_hist['ena_bruta_regiao_mwmed'] = filtered_dates_hist['ena_bruta_regiao_mwmed'].round(2)
+filtered_dates_hist['ena_bruta_regiao_mwmed'] = filtered_dates_hist['ena_bruta_regiao_mwmed'].apply(lambda x: "{:,.2f}".format(x))
+filtered_dates_hist['ena_bruta_regiao_mwmed'] = filtered_dates_hist['ena_bruta_regiao_mwmed'].astype(str)
+filtered_dates_hist['ena_bruta_regiao_mwmed'] = filtered_dates_hist['ena_bruta_regiao_mwmed'].str.replace('.', ' ', regex=False)
+filtered_dates_hist['ena_bruta_regiao_mwmed'] = filtered_dates_hist['ena_bruta_regiao_mwmed'].str.replace(',', '.', regex=False)
+filtered_dates_hist['ena_bruta_regiao_mwmed'] = filtered_dates_hist['ena_bruta_regiao_mwmed'].str.replace(' ', ',', regex=False)
+filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].round(2)
+filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].apply(lambda x: "{:,.2f}".format(x))
+filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].astype(str)
+filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace('.', ' ', regex=False)
+filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace(',', '.', regex=False)
+filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace(' ', ',', regex=False)
+filtered_dates_hist = filtered_dates_hist.drop(columns=['ena_armazenavel_regiao_percentualmlt', 'ena_armazenavel_regiao_mwmed', 'Unnamed: 0', 'month'])
+filtered_dates_hist = filtered_dates_hist.rename(columns={'id_subsistema': 'Submercado', 'ena_bruta_regiao_mwmed': 'ENA Bruta (MWmed)', 'ena_data': 'Data', 
+                                                          'ena_bruta_regiao_percentualmlt': 'ENA Bruta (Porcentual MLT)', 'max': 'Valor mensal máximo histórico', 'min': 'Valor mensal mínimo histórico'})
+filtered_dates_hist = filtered_dates_hist[['Data', 'Submercado', 'ENA Bruta (MWmed)', 'ENA Bruta (Porcentual MLT)', 'Valor mensal máximo histórico', 'Valor mensal mínimo histórico']]
 
-    # Fazendo o download do arquivo Excel
-    st.download_button(
-        label="DOWNLOAD",
-        data=excel_file.getvalue(),
-        file_name=f'Dados_ENA_({data_atual}).xlsx',  # Certifique-se de definir a variável data_atual
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+
+st.write('Download Gráfico 2')
+excel_file = io.BytesIO()
+with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+    filtered_dates_hist.to_excel(writer, index=False, sheet_name='Sheet1')
+
+# Fazendo o download do arquivo Excel
+st.download_button(
+    label="DOWNLOAD",
+    data=excel_file.getvalue(),
+    file_name=f'Dados_ENA_({data_atual} - Gráfico 2).xlsx',  # Certifique-se de definir a variável data_atual
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
