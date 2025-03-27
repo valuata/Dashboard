@@ -1093,7 +1093,7 @@ filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena
 filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace('.', ' ', regex=False)
 filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace(',', '.', regex=False)
 filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace(' ', ',', regex=False)
-filtered_dates_hist = filtered_dates_hist.drop(columns=['ena_armazenavel_regiao_percentualmlt', 'ena_armazenavel_regiao_mwmed', 'Unnamed: 0', 'month'])
+filtered_dates_hist = filtered_dates_hist.drop(columns=['ena_armazenavel_regiao_percentualmlt', 'ena_armazenavel_regiao_mwmed', 'month'])
 filtered_dates_hist = filtered_dates_hist.rename(columns={'id_subsistema': 'Submercado', 'ena_bruta_regiao_mwmed': 'ENA Bruta (MWmed)', 'ena_data': 'Data', 
                                                           'ena_bruta_regiao_percentualmlt': 'ENA Bruta (Porcentual MLT)', 'max': 'Valor mensal máximo histórico', 'min': 'Valor mensal mínimo histórico'})
 filtered_dates_hist = filtered_dates_hist[['Data', 'Submercado', 'ENA Bruta (MWmed)', 'ENA Bruta (Porcentual MLT)', 'Valor mensal máximo histórico', 'Valor mensal mínimo histórico']]
