@@ -739,6 +739,8 @@ st.write("---")
 st.write("")
 st.write("")
 st.write("### Histórico dos submercados")
+st.write('')
+st.write('')
 monthly_data = pd.read_csv('Mlt_atualizado.csv')
 monthly_data['Ano'] = monthly_data['Ano'].apply(lambda x: str(x).strip())
 media_row = monthly_data[monthly_data['Ano'] == 'media'].iloc[0]
