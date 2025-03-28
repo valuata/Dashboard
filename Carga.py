@@ -45,14 +45,14 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 50%;
+            width: 60%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 50%;
+            width: 60%;
             outline: none;
             border: 1px solid #67AEAA; /* Mantém a borda quando está em foco */
         }
@@ -61,34 +61,6 @@ st.markdown("""
             padding: 0px;
             font-size: 1rem;
             font-weight: 400;
-        }
-        .st-cu {
-            border-bottom-left-radius: 0;
-        }
-        .st-ct {
-            border-bottom-right-radius: 0;
-        }
-        .st-cs {
-            border-top-right-radius: 0;
-        }
-        .st-cr {
-            border-top-left-radius: 0;
-        }
-        .st-b1 {
-            border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
-        }
-        .st-b2 {
-            border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
-        }
-        .st-b3 {
-            border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
-        }
-        .st-b4 {
-            border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
         }
         .stDateInput div {
             border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
@@ -180,14 +152,10 @@ def format_month_date(date):
     return format_date(date, format='MM/yyyy', locale='pt_BR').upper()
 def format_daily_date(date):
     return date.strftime('%d/%m/%Y')
-def format_week_date_tick(date):
-    # Calcula o número da semana dentro do mês
-    week_number = (date.day - 1) // 7 + 1  # Semanas de 7 dias
-    return f"S{week_number}/{format_date(date, format='yyyy', locale='pt_BR').upper()}"
+
 def format_month_date_tick(date):
     return format_date(date, format='yyyy', locale='pt_BR').upper()
-def format_daily_date_tick(date):
-    return date.strftime('%Y')
+
 
 def ler_data_arquivo():
     try:
@@ -433,60 +401,25 @@ with st.spinner('Carregando gráfico...'):
 
 
 
-        if frequency == 'Diário':
-            fig.update_xaxes(
-                dtick="D1", 
-                tickformat="%Y", 
-                tickmode='auto',  
-                tickangle=0  
-            )
-        elif frequency == 'Semanal':
-            num_ticks = 5  
 
-            days_diff = (agg_data['din_instante'].max() - agg_data['din_instante'].min()).days
+        # 1. Extrair os anos dos dados
+        agg_data['year'] = agg_data['din_instante'].dt.year
 
-            if days_diff == 0:
-                freq = 'W-SAT'  
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  
+        # 2. Encontrar a primeira ocorrência de cada ano
+        first_occurrences = agg_data.groupby('year')['din_instante'].min()
+        first_occurrences = first_occurrences.to_frame()
 
-            tick_dates = pd.date_range(
-                start=agg_data['din_instante'].min(), 
-                end=agg_data['din_instante'].max(), 
-                freq=freq
-            )
+        # 4. Formatar as datas de ticks (ajustar conforme necessário)
+        formatted_ticks = [format_month_date_tick(date) for date in first_occurrences['din_instante']]
 
-            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
+        # 5. Atualizar o eixo X com essas datas e os rótulos formatados
+        fig.update_xaxes(
+            tickmode='array',
+            tickvals=first_occurrences['din_instante'],  # Posições no eixo X para as primeiras datas de cada ano
+            ticktext=formatted_ticks,  # Rótulos formatados para os ticks
+            tickangle=0  # Ajuste do ângulo dos rótulos, se necessário
+        )
 
-            fig.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  
-                ticktext=formatted_ticks, 
-                tickangle=0
-            )
-        else:
-            num_ticks = 5  
-
-            days_diff = (agg_data['din_instante'].max() - agg_data['din_instante'].min()).days
-
-            if days_diff == 0:
-                freq = 'M' 
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'
-
-            tick_dates = pd.date_range(
-                start=agg_data['din_instante'].min(), 
-                end=agg_data['din_instante'].max(), 
-                freq=freq
-            )
-            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
-
-            fig.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  
-                ticktext=formatted_ticks,  
-                tickangle=0
-            )
 
         fig.update_layout(
             hoverlabel=dict(
@@ -501,11 +434,15 @@ with st.spinner('Carregando gráfico...'):
     else:
         st.write("Sem informações disponíveis para a filtragem feita.")
 
+agg_data = agg_data.drop(columns=['week_label', 'year'])
+
+
+agg_data = agg_data.rename(columns={'din_instante': 'Data', 'id_subsistema': 'Submercado', 'val_cargaenergiamwmed': 'Carga (MWmed)'})
 
 import io
 excel_file = io.BytesIO()
 with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-    carga_data.to_excel(writer, index=False, sheet_name='Sheet1')
+    agg_data.to_excel(writer, index=False, sheet_name='Sheet1')
 
 # Fazendo o download do arquivo Excel
 st.download_button(
