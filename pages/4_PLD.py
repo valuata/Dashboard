@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from babel import Locale
 from babel.numbers import format_decimal, format_currency
 from babel.dates import format_date
+import io
+
 
 st.set_page_config(page_title="PLD", layout="wide")
 st.html("<style>[data-testid='stHeaderActionElements'] {display: none;}</style>")
@@ -31,20 +33,6 @@ st.markdown("""
         [class="st-ak st-al st-bd st-be st-bf st-as st-bg st-da st-ar st-c4 st-c5 st-bk st-c7"] {
             background-color: #FFFFFF;
         }
-        .st-cu {
-            border-bottom-left-radius: 0;
-        }
-        .st-ct {
-            border-bottom-right-radius: 0;
-        }
-        .st-cs {
-            border-top-right-radius: 0;
-        }
-        .st-cr {
-            border-top-left-radius: 0;
-        }
-            
-
         h1{
             text-transform: uppercase; 
             font-weight: 200;
@@ -52,14 +40,14 @@ st.markdown("""
             margin-bottom: 20px; 
         }
         .stDateInput input {
-            width: 50%;
+            width: 70%;
             border: 1px solid #67AEAA;
             color: #67AEAA;
             border-radius: 0px;  /* Arredondando a borda */
         }
                     /* Removendo a borda ao focar no campo */
         .stDateInput input:focus {
-            width: 50%;
+            width: 70%;
             outline: none;
             border: 1px solid #67AEAA; /* Mantém a borda quando está em foco */
         }
@@ -71,19 +59,19 @@ st.markdown("""
         }
         .st-b1 {
             border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
+            border-radius: 7px;         /* Bordas arredondadas */
         }
         .st-b2 {
             border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
+            border-radius: 7px;         /* Bordas arredondadas */
         }
         .st-b3 {
             border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
+            border-radius: 7px;         /* Bordas arredondadas */
         }
         .st-b4 {
             border: 0px solid #4CAF50;  /* Borda verde */
-            border-radius: 0px;         /* Bordas arredondadas */
+            border-radius: 7px;         /* Bordas arredondadas */
         }
         .stDateInput div {
             border-radius: 0px !important;  /* Ensure the outer div also has sharp corners */
@@ -357,61 +345,7 @@ else:
         first_date = filtered_avg_values[variavel].min()
         last_date = filtered_avg_values[variavel].max()
         # Determinando o formato do eixo X com base no valor de 'period'
-        if period == 'Diário':
-            num_ticks = 5  # Quantidade de ticks desejados
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            days_diff = (filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days
-
-            # Ensure we don't divide by zero
-            if days_diff == 0:
-                freq = 'D'  # Default to daily if the date range is only one day
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
-
-            tick_dates = pd.date_range(
-                start=filtered_avg_values[variavel].min(), 
-                end=filtered_avg_values[variavel].max(), 
-                freq=freq
-            )
-            # Formatar as datas para o formato desejado
-            tick_dates = [first_date] + list(tick_dates) + [last_date]
-    
-            formatted_ticks = [format_daily_date_tick(date) for date in tick_dates]
-            # Atualizar o eixo X para usar essas datas formatadas
-            avg_values_per_submarket_graph.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-        elif period == 'Semanal':
-            num_ticks = 5  # Quantidade de ticks desejados
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            days_diff = (filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days
-
-            # Ensure we don't divide by zero
-            if days_diff == 0:
-                freq = 'D'  # Default to daily if the date range is only one day
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
-
-            tick_dates = pd.date_range(
-                start=filtered_avg_values[variavel].min(), 
-                end=filtered_avg_values[variavel].max(), 
-                freq=freq
-            )
-            # Formatar as datas para o formato desejado
-            tick_dates = [first_date] + list(tick_dates) + [last_date]
-    
-            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
-            # Atualizar o eixo X para usar essas datas formatadas
-            avg_values_per_submarket_graph.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-        elif period == 'Horário':
+        if period == 'Horário':
             num_ticks = 5  # Quantidade de ticks desejados
             # Selecione as datas para exibir no eixo X com base no número de ticks
             days_diff = (filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days
@@ -439,32 +373,23 @@ else:
                 tickangle=0
             )
         else:
-            num_ticks = 5  # Quantidade de ticks desejados
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            days_diff = (filtered_avg_values[variavel].max() - filtered_avg_values[variavel].min()).days
+                        # 1. Extrair os anos dos dados
+            filtered_avg_values['year'] = filtered_avg_values[variavel].dt.year
 
-            # Ensure we don't divide by zero
-            if days_diff == 0:
-                freq = 'D'  # Default to daily if the date range is only one day
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+            # 2. Encontrar a primeira ocorrência de cada ano
+            first_occurrences = filtered_avg_values.groupby('year')[variavel].min()
+            first_occurrences = first_occurrences.to_frame()
 
-            tick_dates = pd.date_range(
-                start=filtered_avg_values[variavel].min(), 
-                end=filtered_avg_values[variavel].max(), 
-                freq=freq
-            )
-            # Formatar as datas para o formato desejado
-            tick_dates = [first_date] + list(tick_dates) + [last_date]
-    
-            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
-            # Atualizar o eixo X para usar essas datas formatadas
+            # 4. Formatar as datas de ticks (ajustar conforme necessário)
+            formatted_ticks = [format_month_date_tick(date) for date in first_occurrences[variavel]]
+
+            # 5. Atualizar o eixo X com essas datas e os rótulos formatados
             avg_values_per_submarket_graph.update_xaxes(
                 tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )  # Dia/Mês/Ano
+                tickvals=first_occurrences[variavel],  # Posições no eixo X para as primeiras datas de cada ano
+                ticktext=formatted_ticks,  # Rótulos formatados para os ticks
+                tickangle=0  # Ajuste do ângulo dos rótulos, se necessário
+            )
         max_value = filtered_avg_values['Valor'].max()
         # Atualizando a legenda e outros parâmetros do gráfico
         avg_values_per_submarket_graph.update_layout(
@@ -512,13 +437,30 @@ else:
     
         # Exibir o gráfico de valores médios
         st.plotly_chart(avg_values_per_submarket_graph, config=config)
+        submarket_data['Valor'] = submarket_data['Valor'].round(2)
+        submarket_data['Valor'] = submarket_data['Valor'].astype(str)
+        submarket_data['Valor'] = submarket_data['Valor'].str.replace('.', ' ', regex=False)
+        submarket_data['Valor'] = submarket_data['Valor'].str.replace(',', '.', regex=False)
+        submarket_data['Valor'] = submarket_data['Valor'].str.replace(' ', ',', regex=False)
+        submarket_data = submarket_data.rename(columns={'Valor': 'Preço (R$/MWh)'})
+
+        excel_file = io.BytesIO()
+        with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
+            submarket_data.to_excel(writer, index=False, sheet_name='Sheet1')
+
+        # Fazendo o download do arquivo Excel
+        st.download_button(
+            label="DOWNLOAD",
+            data=excel_file.getvalue(),
+            file_name=f'Dados_PLD (Gráfico 1).xlsx',  # Certifique-se de definir a variável data_atual
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     
     with st.spinner('Carregando gráfico...'):
         if period == "Horário":
             grafico1("Datetime")
         else:
             grafico1("Data")
-
 st.write("")
 st.write("")
 st.write("---")
@@ -726,82 +668,46 @@ with st.spinner('Carregando gráfico...'):
         )
         first_date = agg_data['Data'].min()
         last_date = agg_data['Data'].max()
-        if frequency_bottom == 'Semanal':
-            num_ticks = 5  # Quantidade de ticks desejados
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            days_diff = (agg_data['Data'].max() - agg_data['Data'].min()).days
 
-            # Ensure we don't divide by zero
-            if days_diff == 0:
-                freq = 'D'  # Default to daily if the date range is only one day
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+        agg_data['year'] = agg_data['Data'].dt.year
 
-            tick_dates = pd.date_range(
-                start=agg_data['Data'].min(), 
-                end=agg_data['Data'].max(), 
-                freq=freq
-            )
-                    # Formatar as datas para o formato desejado
-            tick_dates = [first_date] + list(tick_dates) + [last_date]
+        # 2. Encontrar a primeira ocorrência de cada ano
+        first_occurrences = agg_data.groupby('year')['Data'].min()
+        first_occurrences = first_occurrences.to_frame()
 
-            formatted_ticks = [format_week_date_tick(date) for date in tick_dates]
-            # Atualizar o eixo X para usar essas datas formatadas
-            fig.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-        elif frequency_bottom == 'Mensal':
-            num_ticks = 5  # Quantidade de ticks desejados
-            # Selecione as datas para exibir no eixo X com base no número de ticks
-            days_diff = (agg_data['Data'].max() - agg_data['Data'].min()).days
+        # 4. Formatar as datas de ticks (ajustar conforme necessário)
+        formatted_ticks = [format_month_date_tick(date) for date in first_occurrences['Data']]
 
-            # Ensure we don't divide by zero
-            if days_diff == 0:
-                freq = 'D'  # Default to daily if the date range is only one day
-            else:
-                freq = f'{max(1, int(days_diff / num_ticks))}D'  # Ensure freq is at least 1 day
+        # 5. Atualizar o eixo X com essas datas e os rótulos formatados
+        fig.update_xaxes(
+            tickmode='array',
+            tickvals=first_occurrences['Data'],  # Posições no eixo X para as primeiras datas de cada ano
+            ticktext=formatted_ticks,  # Rótulos formatados para os ticks
+            tickangle=0  # Ajuste do ângulo dos rótulos, se necessário
+        )
+        tick_interval = (max_y2 - min_y) / 5  # Dividir o intervalo em 5 partes
+        import math
+        # Gerar uma lista de valores para os ticks do eixo Y
+        tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
+        tick_vals_rounded = [math.ceil(val / 250) * 250 for val in tick_vals]
 
-            tick_dates = pd.date_range(
-                start=agg_data['Data'].min(), 
-                end=agg_data['Data'].max(), 
-                freq=freq
-            )
-            tick_dates = [first_date] + list(tick_dates) + [last_date]
+        # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
+        formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
 
-            formatted_ticks = [format_month_date_tick(date) for date in tick_dates]
-            # Atualizar o eixo X para usar essas datas formatadas
-            fig.update_xaxes(
-                tickmode='array',
-                tickvals=tick_dates,  # Usar as datas calculadas como posições dos ticks
-                ticktext=formatted_ticks,  # Usar as datas formatadas
-                tickangle=0
-            )
-            tick_interval = (max_y2 - min_y) / 5  # Dividir o intervalo em 5 partes
-            import math
-            # Gerar uma lista de valores para os ticks do eixo Y
-            tick_vals = [min_y + i * tick_interval for i in range(6)]  # Gerar 6 valores de tick (ajustável)
-            tick_vals_rounded = [math.ceil(val / 250) * 250 for val in tick_vals]
-
-            # Formatar os ticks para mostrar com separadores de milhar e uma casa decimal
-            formatted_ticks = [format_decimal(val, locale='pt_BR', format="#,##0.") for val in tick_vals_rounded]
-
-            # Atualizar o layout do gráfico com os valores dinâmicos
-            fig.update_layout(
-                yaxis=dict(
-                    tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
-                    tickmode='array',    # Usar modo array para customizar os valores dos ticks
-                    tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
-                    ticktext=formatted_ticks,  # Textos dos ticks formatados
-                    ticks="inside",  # Exibir os ticks dentro do gráfico
-                    tickangle=0,     # Manter os ticks na horizontal
-                    nticks=6,        # Número de ticks desejados
-                ),
-                xaxis=dict(
-                tickformat="%Y") 
-            )
+        # Atualizar o layout do gráfico com os valores dinâmicos
+        fig.update_layout(
+            yaxis=dict(
+                tickformat=",.1f",  # Formatar os ticks para separadores de milhar e uma casa decimal
+                tickmode='array',    # Usar modo array para customizar os valores dos ticks
+                tickvals=tick_vals,  # Valores dos ticks calculados dinamicamente
+                ticktext=formatted_ticks,  # Textos dos ticks formatados
+                ticks="inside",  # Exibir os ticks dentro do gráfico
+                tickangle=0,     # Manter os ticks na horizontal
+                nticks=6,        # Número de ticks desejados
+            ),
+            xaxis=dict(
+            tickformat="%Y") 
+        )
 
         # Exibir o gráfico candlestick
         st.plotly_chart(fig, config=config)
@@ -809,15 +715,37 @@ with st.spinner('Carregando gráfico...'):
     else:
         st.write("Sem informações para a filtragem selecionada")
 
-import io
+agg_data = agg_data.rename(columns={'Open':'Abertura', 'High':'Máximo', 'Low':'Mínimo', 'Close':'Fechamento', 'Mean': 'Média'})
+agg_data = agg_data.drop(columns='year')
+agg_data['Abertura'] = agg_data['Abertura'].round(2)
+agg_data['Abertura'] = agg_data['Abertura'].apply(lambda x: "{:,.2f}".format(x))
+agg_data['Abertura'] = agg_data['Abertura'].astype(str)
+agg_data['Abertura'] = agg_data['Abertura'].str.replace('.', ',', regex=False)
+agg_data['Máximo'] = agg_data['Máximo'].round(2)
+agg_data['Máximo'] = agg_data['Máximo'].apply(lambda x: "{:,.2f}".format(x))
+agg_data['Máximo'] = agg_data['Máximo'].astype(str)
+agg_data['Máximo'] = agg_data['Máximo'].str.replace('.', ',', regex=False)
+agg_data['Mínimo'] = agg_data['Mínimo'].round(2)
+agg_data['Mínimo'] = agg_data['Mínimo'].apply(lambda x: "{:,.2f}".format(x))
+agg_data['Mínimo'] = agg_data['Mínimo'].astype(str)
+agg_data['Mínimo'] = agg_data['Mínimo'].str.replace('.', ',', regex=False)
+agg_data['Fechamento'] = agg_data['Fechamento'].round(2)
+agg_data['Fechamento'] = agg_data['Fechamento'].apply(lambda x: "{:,.2f}".format(x))
+agg_data['Fechamento'] = agg_data['Fechamento'].astype(str)
+agg_data['Fechamento'] = agg_data['Fechamento'].str.replace('.', ',', regex=False)
+agg_data['Média'] = agg_data['Média'].round(2)
+agg_data['Média'] = agg_data['Média'].apply(lambda x: "{:,.2f}".format(x))
+agg_data['Média'] = agg_data['Média'].astype(str)
+agg_data['Média'] = agg_data['Média'].str.replace('.', ',', regex=False)
+
 excel_file = io.BytesIO()
 with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
-    pld_data.to_excel(writer, index=False, sheet_name='Sheet1')
+    agg_data.to_excel(writer, index=False, sheet_name='Sheet1')
 
 # Fazendo o download do arquivo Excel
 st.download_button(
     label="DOWNLOAD",
     data=excel_file.getvalue(),
-    file_name=f'Dados_PLD.xlsx',  # Certifique-se de definir a variável data_atual
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    file_name=f'Dados_PLD (Gráfico 2).xlsx',  # Certifique-se de definir a variável data_atual
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",key='dois'
 )
