@@ -156,7 +156,7 @@ def aggregate_data_ena(data, frequency, metric_column):
         # Resample to weekly (end of week Friday)
         data['week'] = data['ena_data'].dt.to_period('W-SAT').dt.end_time
         data = data.groupby(['id_subsistema', 'week']).agg({
-            metric_column: 'last',
+            metric_column: 'mean',
             'max': 'max',  # Adiciona o cálculo do valor máximo
             'min': 'min'   # Adiciona o cálculo do valor mínimo
         }).reset_index()
@@ -167,7 +167,7 @@ def aggregate_data_ena(data, frequency, metric_column):
         # Resample to monthly
         data['month'] = data['ena_data'].dt.to_period('M').dt.end_time
         data = data.groupby(['id_subsistema', 'month']).agg({
-            metric_column: 'last',
+            metric_column: 'mean',
             'max': 'max',  # Adiciona o cálculo do valor máximo
             'min': 'min'   # Adiciona o cálculo do valor mínimo
         }).reset_index()
@@ -484,13 +484,13 @@ if (data_atual.date() > data_arquivo.date() and data_atual.hour >= 2):
     push_to_github(repo_name, file_name, commit_message, file_content, token)
 
 ena_data = pd.read_csv("Ena_atualizado.csv")
-
 st.title("ENA")
 
 monthly_data = pd.read_csv('Mlt_atualizado.csv')
 monthly_data['Ano'] = monthly_data['Ano'].apply(lambda x: str(x).strip())
 media_row = monthly_data[monthly_data['Ano'] == 'media'].iloc[0]
 ena_data['ena_data'] = pd.to_datetime(ena_data['ena_data'])
+
 
 # Filtros de seleção
 col1, col2 = st.columns(2)
@@ -721,11 +721,9 @@ if frequency == 'Mensal':
     # Ajusta a data para o primeiro dia do mês anterior
     download1['Data'] = download1['Data'].apply(lambda x: pd.Timestamp(year=x.year, month=x.month, day=1))
 
-st.write('Download Gráfico 1')
 excel_file = io.BytesIO()
 with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
     download1.to_excel(writer, index=False, sheet_name='Sheet1')
-
 # Fazendo o download do arquivo Excel
 st.download_button(
     label="DOWNLOAD",
@@ -1093,13 +1091,12 @@ filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena
 filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace('.', ' ', regex=False)
 filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace(',', '.', regex=False)
 filtered_dates_hist['ena_bruta_regiao_percentualmlt'] = filtered_dates_hist['ena_bruta_regiao_percentualmlt'].str.replace(' ', ',', regex=False)
-filtered_dates_hist = filtered_dates_hist.drop(columns=['ena_armazenavel_regiao_percentualmlt', 'ena_armazenavel_regiao_mwmed', 'month'])
+filtered_dates_hist = filtered_dates_hist.drop(columns=['ena_armazenavel_regiao_percentualmlt', 'ena_armazenavel_regiao_mwmed', 'Unnamed: 0', 'month'])
 filtered_dates_hist = filtered_dates_hist.rename(columns={'id_subsistema': 'Submercado', 'ena_bruta_regiao_mwmed': 'ENA Bruta (MWmed)', 'ena_data': 'Data', 
                                                           'ena_bruta_regiao_percentualmlt': 'ENA Bruta (Porcentual MLT)', 'max': 'Valor mensal máximo histórico', 'min': 'Valor mensal mínimo histórico'})
 filtered_dates_hist = filtered_dates_hist[['Data', 'Submercado', 'ENA Bruta (MWmed)', 'ENA Bruta (Porcentual MLT)', 'Valor mensal máximo histórico', 'Valor mensal mínimo histórico']]
 
 
-st.write('Download Gráfico 2')
 excel_file = io.BytesIO()
 with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
     filtered_dates_hist.to_excel(writer, index=False, sheet_name='Sheet1')
