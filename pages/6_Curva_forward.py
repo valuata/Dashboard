@@ -133,18 +133,6 @@ st.markdown("""
         style attribute {
             color: rgb(255, 43, 43);
         }
-        .st-cu {
-            border-bottom-left-radius: 0;
-        }
-        .st-ct {
-            border-bottom-right-radius: 0;
-        }
-        .st-cs {
-            border-top-right-radius: 0;
-        }
-        .st-cr {
-            border-top-left-radius: 0;
-        }
         .stRadio>div>label {
             display: flex;
             align-items: center;
@@ -228,7 +216,7 @@ filtered_data = all_data[(all_data['MÊS'] == mes_selecionado) &
                           (all_data['Tipo Energia'] == tipo_energia)]
 
 # Filtrando os dados para o submercado selecionado
-submercado_cols = [col for col in filtered_data.columns if submercado_selecionado in col]
+submercado_cols = [col for col in filtered_data.columns if submercado_selecionado in col and tipo_energia in col]
 filtered_data = filtered_data[['DIA', 'Tipo Energia'] + submercado_cols]
 
 # Verificando se a filtragem retornou dados
@@ -327,6 +315,9 @@ st.subheader("Histórico de preços de energia para o ano selecionado")
 # O ano selecionado é o ano para o qual queremos ver as previsões
 anos = sorted(all_data['DIA'].dt.year.unique(), reverse=True)
 ano_selecionado = anos[0]
+tipo_data = all_data[all_data['Tipo Energia'] == tipo_energia]
+tipo_data = tipo_data[['DIA'] + submercado_cols]
+
 
 # Filtrando os dados do ano selecionado
 dados_ano_selecionado = filtered_data[filtered_data['DIA'].dt.year == ano_selecionado]
@@ -355,7 +346,7 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
     max_value = 0
 
     # Filtrando os dados para o submercado selecionado
-    submercado_cols = [col for col in all_data.columns if submercado_selecionado in col]
+    submercado_cols = [col for col in tipo_data.columns if submercado_selecionado in col]
     
     # Criando novas colunas para o percentil P10 de A+1, A+2, A+3 e A+4
     for j in range(1, 5):  # Para cada A+1, A+2, A+3, A+4
@@ -366,11 +357,11 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
         p75_col_name = f'{submercado_selecionado} {tipo_energia} A+{j} P75'
         p90_col_name = f'{submercado_selecionado} {tipo_energia} A+{j} P90'
         # Calculando o percentil P10 com média móvel de 260 pontos
-        all_data[p10_col_name] = all_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 10), raw=False)
-        all_data[p25_col_name] = all_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 25), raw=False)
-        all_data[p50_col_name] = all_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 50), raw=False)
-        all_data[p75_col_name] = all_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 75), raw=False)
-        all_data[p90_col_name] = all_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 90), raw=False)
+        tipo_data[p10_col_name] = tipo_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 10), raw=False)
+        tipo_data[p25_col_name] = tipo_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 25), raw=False)
+        tipo_data[p50_col_name] = tipo_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 50), raw=False)
+        tipo_data[p75_col_name] = tipo_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 75), raw=False)
+        tipo_data[p90_col_name] = tipo_data[col_name].rolling(window=260, min_periods=1).apply(lambda x: np.percentile(x, 90), raw=False)
 
     # Atualizar a lógica para incluir previsões futuras
     for i in range(4):
@@ -393,8 +384,8 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                     col_name = f'{submercado_selecionado} {tipo_energia} A+{j+1}'
                     
                     # Filtrando os dados do ano correspondente
-                    prev_year_data = all_data[(all_data['DIA'].dt.year == ano_previsto_atual) & 
-                                               (col_name in all_data.columns)]
+                    prev_year_data = tipo_data[(tipo_data['DIA'].dt.year == ano_previsto_atual) & 
+                                               (col_name in tipo_data.columns)]
                     aux = prev_year_data[col_name].max() if not prev_year_data.empty else 0
                     if aux >= max_value:
                         max_value = aux
@@ -426,99 +417,149 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
 
             # Criando o gráfico com a linha combinada
             fig = go.Figure()
-            
+            customdata = []
+            customdataregular = [format_number(value) for value in combined_values]
+            Pxs = tipo_data[tipo_data['DIA'].isin(combined_dates)]
+            customdata_p10 = [format_number(value) for value in Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P10']]
+            customdata_p25 = [format_number(value) for value in Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P25']]
+            customdata_p50 = [format_number(value) for value in Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P50']]
+            customdata_p75 = [format_number(value) for value in Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P75']]
+            customdata_p90 = [format_number(value) for value in Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P90']]
+
+            # Combine the custom data into a list of dictionaries (one per date)
+            for j in range(len(combined_dates)):
+                customdata.append([ customdataregular[j], customdata_p10[j], customdata_p25[j], customdata_p50[j], customdata_p75[j], customdata_p90[j]])
+
             # Adicionando uma única linha para todas as previsões combinadas
+
             fig.add_trace(go.Scatter(
-                x=combined_dates, 
-                y=combined_values, 
-                mode='lines',
-                name='Previsão',
-                hoverlabel=dict(
-                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
-                ),
-                line=dict(color="#323e47"),  # Cor das linhas
-                hovertemplate=( 
-                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
-                    '<b>Preço: </b>R$ %{customdata}<extra></extra>'
-                ),
-                customdata=[format_number(value) for value in combined_values]  # Formatação customizada para o valor
-            ))
-            fig.add_trace(go.Scatter(
-                x=all_data['DIA'], 
-                y=all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P10'], 
-                mode='lines',
-                name='P10',
-                hoverlabel=dict(
-                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
-                ),
-                line=dict(color="#656871"),  # Cor das linhas
-                hovertemplate=( 
-                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
-                    '<b>P10: </b>R$ %{customdata}<extra></extra>'
-                ),
-                customdata=[format_number(value) for value in all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P10']]  # Formatação customizada para o valor
-            ))
-            fig.add_trace(go.Scatter(
-                x=all_data['DIA'], 
-                y=all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P25'], 
-                mode='lines',
-                name='P25',
-                hoverlabel=dict(
-                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
-                ),
-                line=dict(color="#a1ded2"),  # Cor das linhas
-                hovertemplate=( 
-                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
-                    '<b>P25: </b>R$ %{customdata}<extra></extra>'
-                ),
-                customdata=[format_number(value) for value in all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P25']]  # Formatação customizada para o valor
-            ))
-            fig.add_trace(go.Scatter(
-                x=all_data['DIA'], 
-                y=all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P50'], 
-                mode='lines',
-                name='P50',
-                hoverlabel=dict(
-                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
-                ),
-                line=dict(color="#6b8c89"),  # Cor das linhas
-                hovertemplate=( 
-                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
-                    '<b>P50: </b>R$ %{customdata}<extra></extra>'
-                ),
-                customdata=[format_number(value) for value in all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P50']]  # Formatação customizada para o valor
-            ))
-            fig.add_trace(go.Scatter(
-                x=all_data['DIA'], 
-                y=all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P75'], 
-                mode='lines',
-                name='P75',
-                hoverlabel=dict(
-                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
-                ),
-                line=dict(color="#5e7775"),  # Cor das linhas
-                hovertemplate=( 
-                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
-                    '<b>P75: </b>R$ %{customdata}<extra></extra>'
-                ),
-                customdata=[format_number(value) for value in all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P75']]  # Formatação customizada para o valor
-            ))
-            fig.add_trace(go.Scatter(
-                x=all_data['DIA'], 
-                y=all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P90'], 
+                x=Pxs['DIA'], 
+                y=Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P90'], 
                 mode='lines',
                 name='P90',
                 hoverlabel=dict(
                 align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
                 ),
                 line=dict(color="#67aeaa"),  # Cor das linhas
-                hovertemplate=( 
+                hovertemplate=(
                     '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
-                    '<b>P90: </b>R$ %{customdata}<extra></extra>'
+                    f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
+                    '<b>P10: </b>R$ %{customdata[1]}<br>' +
+                    '<b>P25: </b>R$ %{customdata[2]}<br>' +
+                    '<b>P50: </b>R$ %{customdata[3]}<br>' +
+                    '<b>P75: </b>R$ %{customdata[4]}<br>' +
+                    '<b>P90: </b>R$ %{customdata[5]}<br>' +  
+                    '<extra></extra>'
                 ),
-                customdata=[format_number(value) for value in all_data[f'{submercado_selecionado} {tipo_energia} A+{i+1} P90']]  # Formatação customizada para o valor
+                customdata=customdata,
+                
             ))
-            ultimo_ano_disponivel = all_data['DIA'].dt.year.max()  # Pegando o último ano disponível no dataset
+            fig.add_trace(go.Scatter(
+                x=Pxs['DIA'], 
+                y=Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P75'], 
+                mode='lines',
+                name='P75',
+                hoverlabel=dict(
+                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+                ),
+                line=dict(color="#67aeaa"),  # Cor das linhas
+                hovertemplate=(
+                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
+                    f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
+                    '<b>P10: </b>R$ %{customdata[1]}<br>' +
+                    '<b>P25: </b>R$ %{customdata[2]}<br>' +
+                    '<b>P50: </b>R$ %{customdata[3]}<br>' +
+                    '<b>P75: </b>R$ %{customdata[4]}<br>' +
+                    '<b>P90: </b>R$ %{customdata[5]}<br>' +  
+                    '<extra></extra>'
+                ),
+                customdata=customdata,
+            ))
+            fig.add_trace(go.Scatter(
+                x=Pxs['DIA'], 
+                y=Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P50'], 
+                mode='lines',
+                name='P50',
+                hoverlabel=dict(
+                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+                ),
+                line=dict(color="#67aeaa"),  # Cor das linhas
+                hovertemplate=(
+                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
+                    f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
+                    '<b>P10: </b>R$ %{customdata[1]}<br>' +
+                    '<b>P25: </b>R$ %{customdata[2]}<br>' +
+                    '<b>P50: </b>R$ %{customdata[3]}<br>' +
+                    '<b>P75: </b>R$ %{customdata[4]}<br>' +
+                    '<b>P90: </b>R$ %{customdata[5]}<br>' +  
+                    '<extra></extra>'
+                ),
+                customdata=customdata,
+            ))
+            fig.add_trace(go.Scatter(
+                x=Pxs['DIA'], 
+                y=Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P25'], 
+                mode='lines',
+                name='P25',
+                hoverlabel=dict(
+                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+                ),
+                line=dict(color="#67aeaa"),  # Cor das linhas
+                hovertemplate=(
+                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
+                    f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
+                    '<b>P10: </b>R$ %{customdata[1]}<br>' +
+                    '<b>P25: </b>R$ %{customdata[2]}<br>' +
+                    '<b>P50: </b>R$ %{customdata[3]}<br>' +
+                    '<b>P75: </b>R$ %{customdata[4]}<br>' +
+                    '<b>P90: </b>R$ %{customdata[5]}<br>' +  
+                    '<extra></extra>'
+                ),
+                customdata=customdata,
+            ))
+            fig.add_trace(go.Scatter(
+                x=Pxs['DIA'], 
+                y=Pxs[f'{submercado_selecionado} {tipo_energia} A+{i+1} P10'], 
+                mode='lines',
+                name='P10',
+                hoverlabel=dict(
+                align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+                ),
+                line=dict(color="#67aeaa"),  # Cor das linhas
+                hovertemplate=(
+                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
+                    f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
+                    '<b>P10: </b>R$ %{customdata[1]}<br>' +
+                    '<b>P25: </b>R$ %{customdata[2]}<br>' +
+                    '<b>P50: </b>R$ %{customdata[3]}<br>' +
+                    '<b>P75: </b>R$ %{customdata[4]}<br>' +
+                    '<b>P90: </b>R$ %{customdata[5]}<br>' +  
+                    '<extra></extra>'
+                ),
+                customdata=customdata,
+            ))
+            fig.add_trace(go.Scatter(
+                x=combined_dates, 
+                y=combined_values, 
+                mode='lines',
+                name=f'Cal {ano_previsto}',
+                hoverlabel=dict(
+                    align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
+                ),
+                line=dict(color="#323e47"),  # Cor das linhas
+                hovertemplate=(
+                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
+                    f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
+                    '<b>P10: </b>R$ %{customdata[1]}<br>' +
+                    '<b>P25: </b>R$ %{customdata[2]}<br>' +
+                    '<b>P50: </b>R$ %{customdata[3]}<br>' +
+                    '<b>P75: </b>R$ %{customdata[4]}<br>' +
+                    '<b>P90: </b>R$ %{customdata[5]}<br>' +  
+                    '<extra></extra>'
+                ),
+                customdata=customdata,
+            ))
+            ultimo_ano_disponivel = tipo_data['DIA'].dt.year.max()  # Pegando o último ano disponível no dataset
             
             # Inicializando listas para armazenar os dados combinados das previsões
             combined_dates = []
@@ -534,17 +575,17 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
             col_name4 = f'{submercado_selecionado} {tipo_energia} A+4'
             
             # Filtrando os dados do ano correspondente para a previsão selecionada
-            prev_year_data = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
-                                    (col_name in all_data.columns)]
+            prev_year_data = tipo_data[(tipo_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                                    (col_name in tipo_data.columns)]
             # Filtrando os dados do ano correspondente para a previsão selecionada
-            prev_year_data2 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
-                                    (col_name2 in all_data.columns)]
+            prev_year_data2 = tipo_data[(tipo_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                                    (col_name2 in tipo_data.columns)]
             # Filtrando os dados do ano correspondente para a previsão selecionada
-            prev_year_data3 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
-                                    (col_name3 in all_data.columns)]
+            prev_year_data3 = tipo_data[(tipo_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                                    (col_name3 in tipo_data.columns)]
             # Filtrando os dados do ano correspondente para a previsão selecionada
-            prev_year_data4 = all_data[(all_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
-                                    (col_name4 in all_data.columns)]
+            prev_year_data4 = tipo_data[(tipo_data['DIA'].dt.year <= ultimo_ano_disponivel) & 
+                                    (col_name4 in tipo_data.columns)]
             
             # Verificando se há dados para o ano e submercado
             if not prev_year_data.empty:
@@ -596,7 +637,7 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                     y=-0.5,
                     xanchor="center",
                     x=0.5,
-                    traceorder="normal"
+                    traceorder="reversed"
                 ),
                 yaxis=dict(
                     autorange=False,   # Permite que o valor máximo do eixo Y seja ajustado automaticamente
@@ -630,13 +671,14 @@ st.write('')
 st.write('---')
 st.write('')
 st.write('')
+st.subheader("Histórico de preços de energia")
 
 # Função para formatar os números conforme o padrão português (Brasil)
 def format_number(num):
     return format_decimal(num, locale='pt_BR', format="#,##0.00")
 
-min_date = all_data['DIA'].min().date()
-max_date = all_data['DIA'].max().date()
+min_date = tipo_data['DIA'].min().date()
+max_date = tipo_data['DIA'].max().date()
 start_date_default = max_date.replace(year=ano_selecionado - 3, month=1, day=1)
 max_date = max_date.replace(year=ano_selecionado , month=12, day=31)
 
@@ -669,13 +711,13 @@ with colfim:
 st.session_state.slider_dates = (start_date_slider, end_date_slider)
 
 # Filtrando os dados com base nas datas selecionadas
-filtered_data = all_data[(all_data['DIA'].dt.date >= start_date_slider) & 
-                            (all_data['DIA'].dt.date <= end_date_slider)]
+filtered_data = tipo_data[(tipo_data['DIA'].dt.date >= start_date_slider) & 
+                            (tipo_data['DIA'].dt.date <= end_date_slider)]
 
 # Função para plotar o gráfico de linhas para a previsão selecionada
 def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_selecionada):
     # Determinando o último ano disponível nos dados
-    ultimo_ano_disponivel = all_data['DIA'].dt.year.max()  # Pegando o último ano disponível no dataset
+    ultimo_ano_disponivel = tipo_data['DIA'].dt.year.max()  # Pegando o último ano disponível no dataset
     
     # Inicializando listas para armazenar os dados combinados das previsões
     combined_dates = []
@@ -691,17 +733,17 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
     col_name4 = f'{submercado_selecionado} {tipo_energia} A+4'
     
     # Filtrando os dados do ano correspondente para a previsão selecionada
-    prev_year_data = all_data[(all_data['DIA'].dt.date >= start_date_slider) & 
-                            (all_data['DIA'].dt.date <= end_date_slider)]
+    prev_year_data = tipo_data[(tipo_data['DIA'].dt.date >= start_date_slider) & 
+                            (tipo_data['DIA'].dt.date <= end_date_slider)]
     # Filtrando os dados do ano correspondente para a previsão selecionada
-    prev_year_data2 = all_data[(all_data['DIA'].dt.date >= start_date_slider) & 
-                            (all_data['DIA'].dt.date <= end_date_slider)]
+    prev_year_data2 = tipo_data[(tipo_data['DIA'].dt.date >= start_date_slider) & 
+                            (tipo_data['DIA'].dt.date <= end_date_slider)]
     # Filtrando os dados do ano correspondente para a previsão selecionada
-    prev_year_data3 = all_data[(all_data['DIA'].dt.date >= start_date_slider) & 
-                            (all_data['DIA'].dt.date <= end_date_slider)]
+    prev_year_data3 = tipo_data[(tipo_data['DIA'].dt.date >= start_date_slider) & 
+                            (tipo_data['DIA'].dt.date <= end_date_slider)]
     # Filtrando os dados do ano correspondente para a previsão selecionada
-    prev_year_data4 = all_data[(all_data['DIA'].dt.date >= start_date_slider) & 
-                            (all_data['DIA'].dt.date <= end_date_slider)]
+    prev_year_data4 = tipo_data[(tipo_data['DIA'].dt.date >= start_date_slider) & 
+                            (tipo_data['DIA'].dt.date <= end_date_slider)]
     
     # Verificando se há dados para o ano e submercado
     if not prev_year_data.empty:
@@ -760,7 +802,7 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
             align="left"  # Garantir que o texto da tooltip seja alinhado à esquerda
         ),
         name=f'{previsao_selecionada} para o submercado {submercado_selecionado}',
-        line=dict(color="#67aeaa"),  # Cor das linhas
+        line=dict(color="#323e47"),  # Cor das linhas
         hovertemplate=(
             '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  # Formatação da data
             '<b>Preço: </b>R$ %{customdata}<extra></extra>'
@@ -799,7 +841,6 @@ def plot_previsao_historia(submercado_selecionado, tipo_energia, previsao_seleci
     # Exibindo o gráfico
     st.plotly_chart(fig, use_container_width=True, config=config)
 
-st.subheader("Histórico de preços de energia")
 
 columns = st.columns(2)
 
@@ -833,18 +874,23 @@ if tipo_energia == 'Incentivada':
         export = export.drop(columns=['Sul Incentivada A+1', 'Sul Incentivada A+2', 'Sul Incentivada A+3', 'Sul Incentivada A+4', 
                          'Nordeste Incentivada A+1', 'Nordeste Incentivada A+2', 'Nordeste Incentivada A+3', 'Nordeste Incentivada A+4', 
                          'Norte Incentivada A+1', 'Norte Incentivada A+2', 'Norte Incentivada A+3', 'Norte Incentivada A+4'])
+        export = export[['DIA', 'MÊS', 'SEMANA', 'Tipo Energia', 'SE/CO Incentivada A+1', 'SE/CO Incentivada A+2', 'SE/CO Incentivada A+3', 'SE/CO Incentivada A+4']]
     elif submercado_selecionado == 'Sul':
         export = export.drop(columns= ['SE/CO Incentivada A+1', 'SE/CO Incentivada A+2', 'SE/CO Incentivada A+3', 'SE/CO Incentivada A+4', 
                          'Nordeste Incentivada A+1', 'Nordeste Incentivada A+2', 'Nordeste Incentivada A+3', 'Nordeste Incentivada A+4', 
                          'Norte Incentivada A+1', 'Norte Incentivada A+2', 'Norte Incentivada A+3', 'Norte Incentivada A+4'])
+        export = export[['DIA', 'MÊS', 'SEMANA', 'Tipo Energia', 'Sul Incentivada A+1', 'Sul Incentivada A+2', 'Sul Incentivada A+3', 'Sul Incentivada A+4']]
+
     elif submercado_selecionado == 'Norte':
         export = export.drop(columns= ['SE/CO Incentivada A+1', 'SE/CO Incentivada A+2', 'SE/CO Incentivada A+3', 'SE/CO Incentivada A+4', 
                          'Nordeste Incentivada A+1', 'Nordeste Incentivada A+2', 'Nordeste Incentivada A+3', 'Nordeste Incentivada A+4', 
                          'Sul Incentivada A+1', 'Sul Incentivada A+2', 'Sul Incentivada A+3', 'Sul Incentivada A+4'])
+        export = export[['DIA', 'MÊS', 'SEMANA', 'Tipo Energia', 'Norte Incentivada A+1', 'Norte Incentivada A+2', 'Norte Incentivada A+3', 'Norte Incentivada A+4']]
     elif submercado_selecionado == 'Nordeste':
         export = export.drop(columns= ['SE/CO Incentivada A+1', 'SE/CO Incentivada A+2', 'SE/CO Incentivada A+3', 'SE/CO Incentivada A+4', 
                          'Sul Incentivada A+1', 'Sul Incentivada A+2', 'Sul Incentivada A+3', 'Sul Incentivada A+4', 
                          'Norte Incentivada A+1', 'Norte Incentivada A+2', 'Norte Incentivada A+3', 'Norte Incentivada A+4'])
+        export = export[['DIA', 'MÊS', 'SEMANA', 'Tipo Energia', 'Nordeste Incentivada A+1', 'Nordeste Incentivada A+2', 'Nordeste Incentivada A+3', 'Nordeste Incentivada A+4']]
 else:   
     export = export.drop(columns=['SE/CO Incentivada A+1', 'SE/CO Incentivada A+2', 'SE/CO Incentivada A+3', 'SE/CO Incentivada A+4', 
                          'Sul Incentivada A+1', 'Sul Incentivada A+2', 'Sul Incentivada A+3', 'Sul Incentivada A+4', 
@@ -854,22 +900,29 @@ else:
         export = export.drop(columns=['Sul Convencional A+1', 'Sul Convencional A+2', 'Sul Convencional A+3', 'Sul Convencional A+4', 
                          'Nordeste Convencional A+1', 'Nordeste Convencional A+2', 'Nordeste Convencional A+3', 'Nordeste Convencional A+4', 
                          'Norte Convencional A+1', 'Norte Convencional A+2', 'Norte Convencional A+3', 'Norte Convencional A+4'])
+        export = export[['DIA', 'MÊS', 'SEMANA', 'Tipo Energia', 'SE/CO Convencional A+1', 'SE/CO Convencional A+2', 'SE/CO Convencional A+3', 'SE/CO Convencional A+4']]
     elif submercado_selecionado == 'Sul':
         export = export.drop(columns= ['SE/CO Convencional A+1', 'SE/CO Convencional A+2', 'SE/CO Convencional A+3', 'SE/CO Convencional A+4', 
                          'Nordeste Convencional A+1', 'Nordeste Convencional A+2', 'Nordeste Convencional A+3', 'Nordeste Convencional A+4', 
                          'Norte Convencional A+1', 'Norte Convencional A+2', 'Norte Convencional A+3', 'Norte Convencional A+4'])
+        export = export[['DIA', 'MÊS', 'SEMANA', 'Tipo Energia', 'Sul Convencional A+1', 'Sul Convencional A+2', 'Sul Convencional A+3', 'Sul Convencional A+4']]
     elif submercado_selecionado == 'Norte':
         export = export.drop(columns= ['SE/CO Convencional A+1', 'SE/CO Convencional A+2', 'SE/CO Convencional A+3', 'SE/CO Convencional A+4', 
                          'Nordeste Convencional A+1', 'Nordeste Convencional A+2', 'Nordeste Convencional A+3', 'Nordeste Convencional A+4', 
                          'Sul Convencional A+1', 'Sul Convencional A+2', 'Sul Convencional A+3', 'Sul Convencional A+4'])
+        export = export[['DIA', 'MÊS', 'SEMANA', 'Tipo Energia', 'Norte Convencional A+1', 'Norte Convencional A+2', 'Norte Convencional A+3', 'Norte Convencional A+4']]
     elif submercado_selecionado == 'Nordeste':
         export = export.drop(columns= ['SE/CO Convencional A+1', 'SE/CO Convencional A+2', 'SE/CO Convencional A+3', 'SE/CO Convencional A+4', 
                          'Sul Convencional A+1', 'Sul Convencional A+2', 'Sul Convencional A+3', 'Sul Convencional A+4', 
                          'Norte Convencional A+1', 'Norte Convencional A+2', 'Norte Convencional A+3', 'Norte Convencional A+4'])
+        export = export[['DIA', 'MÊS', 'SEMANA', 'Tipo Energia', 'Nordeste Convencional A+1', 'Nordeste Convencional A+2', 'Nordeste Convencional A+3', 'Nordeste Convencional A+4']]
 
 
+export = export.rename(columns={'DIA': 'Data', 'SEMANA': 'Semana', 'MÊS': 'Mês', 'Tipo Energia': 'Tipo de Energia'})
 if submercado_selecionado == 'SE/CO':
     export = export.drop(columns=[])
+
+
 import io
 excel_file = io.BytesIO()
 with pd.ExcelWriter(excel_file, engine='xlsxwriter') as writer:
