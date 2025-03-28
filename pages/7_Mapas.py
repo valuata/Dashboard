@@ -411,11 +411,11 @@ with col_center:
             st.subheader(f"Mapa {i + 1}")
     
             # Seleção de Tipo
-            tipo = st.selectbox(f"Tipo", options=["", "SOLO", "ANOMALIA", "PRECIPITACAO"], key=f"tipo_{i}", format_func=lambda x: tipo_mapping.get(x, x))
+            tipo = st.selectbox(f"Tipo", options=["SOLO", "ANOMALIA", "PRECIPITACAO"], key=f"tipo_{i}", format_func=lambda x: tipo_mapping.get(x, x))
             
             # Seleção de Data, baseada no tipo
             if tipo:
-                data = st.selectbox(f"Data", options=[""] + data_options, key=f"data_{i}")
+                data = st.selectbox(f"Data", data_options, key=f"data_{i}")
             else:
                 data = ""
             
@@ -426,7 +426,7 @@ with col_center:
                     st.selectbox(f"Data (Previsão)", options=[""] + get_forecast_data_options_for_date(data), disabled=True, key=f"forecast_data_{i}")
                 else:
                     # Atualizar as opções de "Data (Previsão)" dependendo da "Data"
-                    forecast_data = st.selectbox(f"Data (Previsão)", options=[""] + get_forecast_data_options_for_date(data), key=f"forecast_data_{i}")
+                    forecast_data = st.selectbox(f"Data (Previsão)", get_forecast_data_options_for_date(data), key=f"forecast_data_{i}")
             else:
                 forecast_data = ""  # Se "Data" não for selecionado, não mostra "Data (Previsão)"
     
@@ -479,104 +479,3 @@ if st.button("Gerar Comparação", key="gerar_comparacao", help="Clique para ger
             cols[idx % images_per_row].image(img, caption=formatted_name)
     else:
         st.write("Sem imagens para exibir com os filtros selecionados.")
-
-
-
-
-# # Gerar Comparação
-# colgerar, colbut = st.columns([2,8])
-# with colgerar:
-#     # Criar o botão "Gerar Comparação"
-#     if st.button("Gerar Comparação", key="gerar_comparacao", help="Clique para gerar comparação"):
-#         images_per_row = 4
-#         all_images = []
-    
-#         for i, filter_set in enumerate(st.session_state.selected_filters):
-#             data = filter_set["data"]
-#             tipo = filter_set["tipo"]
-#             forecast_data = filter_set["forecast_data"]
-            
-#             if tipo == "SOLO":
-#                 forecast_data = ""  # Não precisa de previsão para tipo "SOLO"
-    
-#             if not all([data, tipo]) or (tipo != "SOLO" and not forecast_data):
-#                 st.warning(f"Por favor, complete todos os filtros para a Imagem {i + 1}.")
-#                 continue
-            
-#             selected_images = fetch_images_by_data(data, tipo, forecast_data)
-#             if selected_images:
-#                 all_images.extend(selected_images)
-#             else:
-#                 st.write(f"Sem resultados para a Imagem {i + 1} com os filtros selecionados.")
-        
-#         if all_images:
-#             st.write('')
-#             st.write('')
-#             cols = st.columns(images_per_row) 
-#             for idx, img_file in enumerate(all_images):
-#                 img_path = os.path.join(IMAGE_DIR, img_file)
-#                 img = Image.open(img_path)
-#                 filename_without_ext = os.path.splitext(img_file)[0]
-#                 tipo_from_filename = filename_without_ext.split('_')[1]
-#                 regular_month, regular_year, pred_month, pred_year = extract_dates_from_filename(img_file)
-#                 formatted_name = ''  # Formatação do nome, se necessário
-    
-#                 img_width, img_height = img.size
-#                 max_width = 300
-#                 max_height = 300
-    
-#                 if img_width > img_height:
-#                     img.thumbnail((max_width, int((max_width / img_width) * img_height)))
-#                 else:
-#                     img.thumbnail((int((max_height / img_height) * img_width), max_height))
-    
-#                 cols[idx % images_per_row].image(img, caption=formatted_name)
-#         else:
-#             st.write("Sem imagens para exibir com os filtros selecionados.")
-# with colbut:
-#     if st.button("🔍"):
-        # images_per_row = 4
-        # all_images = []
-    
-        # for i, filter_set in enumerate(st.session_state.selected_filters):
-        #     data = filter_set["data"]
-        #     tipo = filter_set["tipo"]
-        #     forecast_data = filter_set["forecast_data"]
-            
-        #     if tipo == "SOLO":
-        #         forecast_data = ""  # Não precisa de previsão para tipo "SOLO"
-    
-        #     if not all([data, tipo]) or (tipo != "SOLO" and not forecast_data):
-        #         st.warning(f"Por favor, complete todos os filtros para a Imagem {i + 1}.")
-        #         continue
-            
-        #     selected_images = fetch_images_by_data(data, tipo, forecast_data)
-        #     if selected_images:
-        #         all_images.extend(selected_images)
-        #     else:
-        #         st.write(f"Sem resultados para a Imagem {i + 1} com os filtros selecionados.")
-        
-        # if all_images:
-        #     st.write('')
-        #     st.write('')
-        #     cols = st.columns(images_per_row) 
-        #     for idx, img_file in enumerate(all_images):
-        #         img_path = os.path.join(IMAGE_DIR, img_file)
-        #         img = Image.open(img_path)
-        #         filename_without_ext = os.path.splitext(img_file)[0]
-        #         tipo_from_filename = filename_without_ext.split('_')[1]
-        #         regular_month, regular_year, pred_month, pred_year = extract_dates_from_filename(img_file)
-        #         formatted_name = ''  # Formatação do nome, se necessário
-    
-        #         img_width, img_height = img.size
-        #         max_width = 300
-        #         max_height = 300
-    
-        #         if img_width > img_height:
-        #             img.thumbnail((max_width, int((max_width / img_width) * img_height)))
-        #         else:
-        #             img.thumbnail((int((max_height / img_height) * img_width), max_height))
-    
-        #         cols[idx % images_per_row].image(img, caption=formatted_name)
-        # else:
-        #     st.write("Sem imagens para exibir com os filtros selecionados.")
