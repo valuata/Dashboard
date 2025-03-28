@@ -255,11 +255,11 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#67aeaa'),
-                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.45,
-                showlegend=False
+                showlegend=False,
+                hoverinfo='none' 
             ))
         legend_entries.append({'color': '#67aeaa', 'text': vigencia})
         max_value = max([bar_data['Valor'] for bar_data in bars_data])
@@ -281,11 +281,11 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#323e47'),
-                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.45,
-                showlegend=False
+                showlegend=False,
+                hoverinfo='none' 
             ))
         legend_entries.append({'color': '#323e47', 'text': vigencia})
         aux = max([bar_data['Valor'] for bar_data in bars_data])
@@ -371,11 +371,11 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#67aeaa'),
-                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.30,
-                showlegend=False
+                showlegend=False,
+                hoverinfo='none' 
             ))
         legend_entries.append({'color': '#67aeaa', 'text': vigencia})
         max_value2 = get_max_value()
@@ -398,11 +398,11 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#323e47'),
-                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.30,
-                showlegend=False
+                showlegend=False,
+                hoverinfo='none' 
             ))
         legend_entries.append({'color': '#323e47', 'text': vigencia})
 
@@ -489,11 +489,11 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#67aeaa'),
-                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.30,
-                showlegend=False
+                showlegend=False,
+                hoverinfo='none' 
             ))
         max_value3 = get_max_value()
         legend_entries.append({'color': '#67aeaa', 'text': vigencia})
@@ -516,11 +516,11 @@ else:
                 x=[bar_data['Posto']],
                 y=[bar_data['Valor']],
                 marker=dict(color='#323e47'),
-                hovertemplate='<b>%{x}: </b> ' + bar_data['FormattedValor'] + '<extra></extra>',
                 text=[bar_data['FormattedValor']],
                 textposition='outside',
                 width=0.30,
-                showlegend=False
+                showlegend=False,
+                hoverinfo='none' 
             ))
         legend_entries.append({'color': '#323e47', 'text': vigencia})
 
@@ -577,7 +577,7 @@ else:
                 x=[None], y=[None], mode='markers',
                 marker=dict(color=entry['color'], size=10, symbol='square'),
                 name=entry['text'],
-                showlegend=True
+                showlegend=True   
             ))
 
     if tusd_demanda.empty and not vazio.empty and not vazio_tarifa.empty:
