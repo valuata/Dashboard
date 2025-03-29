@@ -666,6 +666,8 @@ st.write("---")
 st.write("")
 st.write("")
 st.write("### Variação das Bandeiras Tarifárias")
+st.write("")
+st.write("")
 def format_month_date(date):
     return format_date(date, format='MM/yyyy', locale='pt_BR').upper()
 # Definir a ordem das bandeiras
