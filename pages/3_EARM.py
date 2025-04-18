@@ -254,7 +254,7 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
             annotations=[
                 dict(
                     x=0.5,  # Centraliza o texto horizontalmente
-                    y=0.43,  # Centraliza o texto verticalmente
+                    y=0.35,  # Centraliza o texto verticalmente
                     text=formatted_percentage+'%',  # Texto a ser mostrado
                     font=dict(size=font_size, color="gray"),  # Estilo do texto
                     showarrow=False,  # Não mostra seta
@@ -263,7 +263,7 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
             title="",
             grid={'rows': 1, 'columns': 1},
             showlegend=False,
-            height=400,  # Aumentando a altura para acomodar melhor o gauge
+            height=250,  # Aumentando a altura para acomodar melhor o gauge
             width=500,  # Aumentando a largura para dar mais espaço ao velocímetro
             margin={"l": 20, "r": 20, "t": 0, "b": 0},  # Reduz margens para dar mais espaço aos gráficos
         )
@@ -316,7 +316,7 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
         annotations=[
             dict(
                 x=0.5,  # Centraliza o texto horizontalmente
-                y=0.43,  # Centraliza o texto verticalmente
+                y=0.35,  # Centraliza o texto verticalmente
                 text=formatted_sim_percentage+'%',  # Texto a ser mostrado
                 font=dict(size=font_size, color="gray"),  # Estilo do texto
                 showarrow=False,  # Não mostra seta
@@ -325,7 +325,7 @@ def make_subsystem_gauge_charts(data, metric_column, sim_column):
         title="",
         grid={'rows': 1, 'columns': 1},
         showlegend=False,
-        height=400,  # Aumentando a altura para acomodar melhor o gauge
+        height=250,  # Aumentando a altura para acomodar melhor o gauge
         width=500,  # Aumentando a largura para dar mais espaço ao velocímetro
         margin={"l": 20, "r": 20, "t": 0, "b":0},  # Reduz margens para dar mais espaço aos gráficos
     )
