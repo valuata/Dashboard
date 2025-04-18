@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from babel import Locale
-from babel.numbers import format_decimal, format_currency
+from babel.numbers import format_decimal
 import io
 from babel.dates import format_date
 
