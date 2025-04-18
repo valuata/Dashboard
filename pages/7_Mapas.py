@@ -83,11 +83,6 @@ st.markdown("""
             outline: none; /* Remover contorno ao focar */
             border: 2px solid #56A798; /* Cor da borda quando focado */
         }
-        hr {
-            border: 0;
-            height: 0.7px !important;
-            background-color: #67AEAA;  /* Cor do tracinho */
-        }
         /* Estilo específico para o botão 'Gerar Comparação' */
         .custom-gerar-comparacao .stButton>button {
             background-color: #4CAF50;  /* Cor de fundo exclusiva */
@@ -346,6 +341,11 @@ if intercalated_images:
     cols = st.columns(num_columns)
     
     for i, img_file in enumerate(intercalated_images):
+        if i % num_columns == 0 and i != 0:
+            # Insere uma linha muito fina entre as fileiras
+            st.markdown('<hr style="border: none; height: 0.5px; background-color: #67aeaa; margin: 10px 0;"><div style="height: 5px;"></div>', unsafe_allow_html=True)
+            cols = st.columns(num_columns)  # Recria as colunas para a nova fileira
+
         img_path = os.path.join(IMAGE_DIR, img_file)
         img = Image.open(img_path)
         filename_without_ext = os.path.splitext(img_file)[0]
@@ -367,7 +367,7 @@ else:
 # Segunda parte: seção de comparação
 st.write("")
 st.write("")
-st.write("---")
+st.markdown('<hr style="border: none; height: 2.5px; background-color: #67aeaa; margin: 10px 0;"><div style="height: 5px;"></div>', unsafe_allow_html=True)
 st.write("")
 st.write("")
 if 'selected_filters' not in st.session_state:
@@ -479,3 +479,5 @@ if st.button("Gerar Comparação", key="gerar_comparacao", help="Clique para ger
             cols[idx % images_per_row].image(img, caption=formatted_name)
     else:
         st.write("Sem imagens para exibir com os filtros selecionados.")
+
+
