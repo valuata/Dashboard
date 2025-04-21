@@ -521,27 +521,50 @@ def plot_forecast_graphs(ano_selecionado, submercado_selecionado, tipo_energia):
                 ),
                 customdata=customdata,
             ))
-            fig.add_trace(go.Scatter(
-                x=combined_dates, 
-                y=combined_values, 
-                mode='lines',
-                name=f'Cal {ano_previsto}',
-                hoverlabel=dict(
-                    align="left" 
-                ),
-                line=dict(color="#323e47"), 
-                hovertemplate=(
-                    '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  
-                    f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
-                    '<b>P10: </b>R$ %{customdata[1]}<br>' +
-                    '<b>P25: </b>R$ %{customdata[2]}<br>' +
-                    '<b>P50: </b>R$ %{customdata[3]}<br>' +
-                    '<b>P75: </b>R$ %{customdata[4]}<br>' +
-                    '<b>P90: </b>R$ %{customdata[5]}<br>' +  
-                    '<extra></extra>'
-                ),
-                customdata=customdatacal,
-            ))
+            if ano_previsto == ano_selecionado+1:
+                fig.add_trace(go.Scatter(
+                    x=combined_dates, 
+                    y=combined_values, 
+                    mode='lines',
+                    name=f'Cal {ano_previsto}',
+                    hoverlabel=dict(
+                        align="left" 
+                    ),
+                    line=dict(color="#323e47"), 
+                    hovertemplate=(
+                        '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  
+                        f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
+                        '<b>P10: </b>R$ %{customdata[1]}<br>' +
+                        '<b>P25: </b>R$ %{customdata[2]}<br>' +
+                        '<b>P50: </b>R$ %{customdata[3]}<br>' +
+                        '<b>P75: </b>R$ %{customdata[4]}<br>' +
+                        '<b>P90: </b>R$ %{customdata[5]}<br>' +  
+                        '<extra></extra>'
+                    ),
+                    customdata=customdata,
+                ))
+            else:
+                fig.add_trace(go.Scatter(
+                    x=combined_dates, 
+                    y=combined_values, 
+                    mode='lines',
+                    name=f'Cal {ano_previsto}',
+                    hoverlabel=dict(
+                        align="left" 
+                    ),
+                    line=dict(color="#323e47"), 
+                    hovertemplate=(
+                        '<b>Data: </b>%{x|%d/%m/%Y}<br>' +  
+                        f'<b>Cal {ano_previsto}:'' </b>R$ %{customdata[0]}<br>' +
+                        '<b>P10: </b>R$ %{customdata[1]}<br>' +
+                        '<b>P25: </b>R$ %{customdata[2]}<br>' +
+                        '<b>P50: </b>R$ %{customdata[3]}<br>' +
+                        '<b>P75: </b>R$ %{customdata[4]}<br>' +
+                        '<b>P90: </b>R$ %{customdata[5]}<br>' +  
+                        '<extra></extra>'
+                    ),
+                    customdata=customdatacal,
+                ))
             ultimo_ano_disponivel = tipo_data['DIA'].dt.year.max()  
             
             # Inicializando listas para armazenar os dados combinados das previsões
