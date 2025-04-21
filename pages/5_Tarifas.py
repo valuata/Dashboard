@@ -751,17 +751,16 @@ with col10:
         <div style="height: 5px;"></div>
         """, unsafe_allow_html=True
     )
-    match ultima_band:
-        case 'Verde':
-            cor = '#317d1a'
-        case 'Amarela':
-            cor = '#787d1a'
-        case 'Vermelha 1':
-            cor = '#7d1a1a'
-        case 'Vermelha 2':
-            cor = '#780d0d'
-        case 'Escassez Hídrica':
-            cor = '#b50202'
+    if ultima_band == 'Verde':
+        cor = '#317d1a'
+    elif ultima_band == 'Amarela':
+        cor = '#787d1a'
+    elif ultima_band == 'Vermelha 1':
+        cor = '#7d1a1a'
+    elif ultima_band == 'Vermelha 2':
+        cor = '#780d0d'
+    elif ultima_band == 'Escassez Hídrica':
+        cor = '#b50202'
     st.markdown(
         f"""
         <div style="border: 1px solid #67aeaa; padding: 8px; border-radius: 0px; width: 160px; color:#323e47;">
